@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC  -O2 -W -Wall -Wno-unused-parameter -Wunused-variable  -shared -Wl,-soname,libevnet_core.so -o libevnet_core.so CMakeFiles/evnet_shared.dir/ev.cpp.o CMakeFiles/evnet_shared.dir/ev_process_internal.cpp.o CMakeFiles/evnet_shared.dir/ev_io.cpp.o CMakeFiles/evnet_shared.dir/ev_timer.cpp.o CMakeFiles/evnet_shared.dir/reactor/reactor_epoll.cpp.o 

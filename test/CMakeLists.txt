@@ -1,0 +1,37 @@
+PROJECT(test)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+INCLUDE_DIRECTORIES(.)
+INCLUDE_DIRECTORIES(../src)
+INCLUDE_DIRECTORIES(../src/core)
+
+SET(CMAKE_CXX_FLAGS_DEBUG   "$ENV{CXXFLAGS} -g -O0 -Wall -Wno-unused-parameter -Wunused-function -Wunused-variable -Wunused-value -W -D_FILE_OFFSET_BITS=64 -D_LARGE_FILE")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS}    -O2 -Wall -Wno-unused-parameter -Wunused-function -Wunused-variable -Wunused-value -W -D_FILE_OFFSET_BITS=64 -D_LARGE_FILE")
+
+IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    MESSAGE(STATUS "Debug Mode")
+    MESSAGE(STATUS "Flags:" ${CMAKE_CXX_FLAGS_DEBUG} )
+ELSE (CMAKE_BUILD_TYPE STREQUAL "Release")
+    MESSAGE(STATUS "Release Mode")
+    MESSAGE(STATUS "Flags:" ${CMAKE_CXX_FLAGS_RELEASE})
+ENDIF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+SET(LIBRARIES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/core/build/libevnet_core.so
+)
+
+ADD_EXECUTABLE(io1 io1.cpp)
+TARGET_LINK_LIBRARIES(io1 ${LIBRARIES})
+
+ADD_EXECUTABLE(io_timeout io_timeout.cpp)
+TARGET_LINK_LIBRARIES(io_timeout ${LIBRARIES})
+
+ADD_EXECUTABLE(fd_error fd_error.cpp)
+TARGET_LINK_LIBRARIES(fd_error ${LIBRARIES})
+
+ADD_EXECUTABLE(timer1 test_timer1.cpp)
+TARGET_LINK_LIBRARIES(timer1 ${LIBRARIES})
+
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+
