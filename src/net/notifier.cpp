@@ -1,5 +1,5 @@
 #include "notifier.h"
-#include "net_manager.h"
+#include "net_processor.h"
 #include "net_connection.h"
 
 #include <sys/eventfd.h>
@@ -8,9 +8,10 @@
 namespace knet
 {
 
-Notifier::Notifier()
+Notifier::Notifier(NetProcessor* processor):
+    _net_processor(processor)
 {
-    //SET_HANDLE(this, &Notifier::notify);
+    SET_HANDLE(this, &Notifier::notified);
     _fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (_fd < 0)
     {
@@ -29,7 +30,7 @@ void Notifier::start()
     TcpSocket* const sock = new TcpSocket(_fd);
     if (sock)
     {
-        //_net_manager->addConnection(new NetConnection(sock, this, NetConnection::SEND_NOTIFY));
+        _net_processor->addConnection(new NetConnection(sock, this, NetConnection::SEND_NOTIFY));
     }
     else
     {
@@ -41,6 +42,7 @@ void Notifier::start()
 
 int Notifier::notified(int code, void* data)
 {
+    return 0;
 }
 
 }

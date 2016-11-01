@@ -13,6 +13,7 @@
 namespace knet
 {
 
+class Notifier;
 class NetRequestProcessor;
 class NetManager;
 // 网络请求处理的入口
@@ -109,6 +110,8 @@ class NetProcessor : public CallbackObj
         NetProcessor(NetManager* net_manager, NetRequestProcessor* processor);
         virtual ~NetProcessor();
 
+        void init();
+
         int process(int code, void* data);
 
         // 新连接到来
@@ -196,6 +199,8 @@ class NetProcessor : public CallbackObj
     private:
         void init_empty_conn_list();
         void init_conn_ids();
+        void setup_timer(int timeout);
+        void setup_notifier();
 
         int process_read(NetProcessor::Session& session, util::Buffer& buffer);
         int check_data(NetProcessor::Session& session, util::Buffer& buffer);
@@ -222,8 +227,9 @@ class NetProcessor : public CallbackObj
     private:
         evnet::EvLoop* _reactor;
         NetRequestProcessor* _processor;
-        TimeWheel _timer_queue;
+        Notifier* _notifier;
         evnet::EvTimer* _timer;
+        TimeWheel _timer_queue;
         util::IDCreatorUnsafe _mask_generator;
 
         int _id;
@@ -235,10 +241,9 @@ class NetProcessor : public CallbackObj
         // connection的id,约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
         int _conn_ids[MAX_CONNECTION_EACH_MANAGER];
         int _conn_id_num;
-
+        NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
         // connection的id到NetConnection的映射表
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
-        NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
 
         friend class TimeWheel;
 };

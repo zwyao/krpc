@@ -7,10 +7,11 @@
 namespace knet
 {
 
+class NetProcessor;
 class Notifier : public CallbackObj
 {
     public:
-        explicit Notifier();
+        explicit Notifier(NetProcessor* processor);
         virtual ~Notifier();
 
         int notified(int code, void* data);
@@ -19,7 +20,7 @@ class Notifier : public CallbackObj
         void start();
 
     private:
-        //NetManager* const _net_manager;
+        NetProcessor* const _net_processor;
         int _fd;
         util::IOBuffer _out_buffer;
 };

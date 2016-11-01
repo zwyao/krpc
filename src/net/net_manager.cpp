@@ -17,7 +17,7 @@ NetManager::~NetManager()
         delete _acceptor;
 }
 
-void NetManager::startAcceptor(int port)
+void NetManager::startNetProcessor()
 {
     _net_processor = new NetProcessor(this, _request_processor);
     if (_net_processor == 0)
@@ -25,6 +25,13 @@ void NetManager::startAcceptor(int port)
         fprintf(stderr, "NetProcessor start error\n");
         exit(-1);
     }
+    _net_processor->init();
+}
+
+void NetManager::startAcceptor(int port)
+{
+    if (_net_processor == 0)
+        startNetProcessor();
 
     _acceptor = new Acceptor(_net_processor, port);
     if (_acceptor == 0)

@@ -14,7 +14,6 @@ namespace knet
 class NetRequestProcessor;
 class NetProcessor;
 class Acceptor;
-class Notifier;
 class NetManager
 {
     public:
@@ -22,7 +21,6 @@ class NetManager
             _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
             _acceptor(0),
             _net_processor(0),
-            _notifier(0),
             _request_processor(processor),
             _idle_timeout(idle_timeout)
         {
@@ -35,7 +33,16 @@ class NetManager
 
         ~NetManager();
 
+        /*
+         * 启动监听
+         */
         void startAcceptor(int port);
+
+        /*
+         *
+         */
+        void startNetProcessor();
+
         void run();
 
         inline evnet::EvLoop* getReactor() { return _reactor; }
@@ -45,7 +52,6 @@ class NetManager
         evnet::EvLoop* _reactor;
         Acceptor* _acceptor;
         NetProcessor* _net_processor;
-        Notifier* _notifier;
         NetRequestProcessor* _request_processor;
         // 空闲链接的timeout，不是收发数据的timeout
         // 秒级

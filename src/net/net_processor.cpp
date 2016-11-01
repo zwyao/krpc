@@ -1,8 +1,8 @@
 #include "net_processor.h"
 #include "net_manager.h"
 #include "net_request_processor.h"
-#include "net_pipe.h"
 #include "net_event.h"
+#include "notifier.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,14 +21,18 @@ namespace knet
 NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* processor):
     _reactor(net_manager->getReactor()),
     _processor(processor),
-    _timer_queue(),
+    _notifier(0),
     _timer(0),
+    _timer_queue(),
     _mask_generator(0),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(util::IOBuffer::getSmallBufferSize() - 8),
     _conn_empty_list(0)
 {
     SET_HANDLE(this, &NetProcessor::process);
+
+    assert(_processor != 0);
+    assert(MAX_CONNECTION_EACH_MANAGER > 0);
 
     if (_id >= NET_MANAGER_NUM)
     {
@@ -37,26 +41,7 @@ NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* process
     }
 
     detail::g_net_processors[_id] = this;
-    fprintf(stderr, "net processor %d start\n", _id);
-
-    assert(_processor != 0);
-    assert(MAX_CONNECTION_EACH_MANAGER > 0);
-
-    init_empty_conn_list();
-    init_conn_ids();
-
-    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
-        _session_set[i]._conn_id = i;
-
-    if (net_manager->getIdleTimeout() > 0)
-    {
-        _timer = evnet::EvTimer::create();
-        _timer_queue.init(this, net_manager->getIdleTimeout()*2);
-        assert(_timer != 0);
-
-        _timer->set(0.5, 0.5, NetProcessor::on_timer, this);
-        _timer->addTimer(_reactor);
-    }
+    setup_timer(net_manager->getIdleTimeout());
 }
 
 NetProcessor::~NetProcessor()
@@ -67,6 +52,17 @@ NetProcessor::~NetProcessor()
     for (int i = 0; i < _conn_empty_list_num; ++i)
         delete _conn_empty_list[i];
     delete _conn_empty_list;
+}
+
+void NetProcessor::init()
+{
+    fprintf(stderr, "net processor %d start\n", _id);
+
+    init_empty_conn_list();
+    init_conn_ids();
+
+    // 必须在最后执行,因为Notifier需要调用NetProcessor
+    setup_notifier();
 }
 
 int NetProcessor::process(int code, void* data)
@@ -252,10 +248,41 @@ void NetProcessor::init_conn_ids()
 {
     int id = MAX_CONNECTION_EACH_MANAGER;
     for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
+    {
         _conn_ids[i] = --id;
+        _session_set[i]._conn_id = i;
+    }
     _conn_id_num = MAX_CONNECTION_EACH_MANAGER;
 
     memset(_connections, 0, sizeof(_connections));
+}
+
+void NetProcessor::setup_timer(int timeout)
+{
+    if (timeout > 0)
+    {
+        _timer = evnet::EvTimer::create();
+        _timer_queue.init(this, timeout*2);
+        if (_timer == 0)
+        {
+            fprintf(stderr, "Create timer error\n");
+            abort();
+        }
+
+        // TODO 可以根据timeout大小确定检测周期，而不是固定的0.5秒
+        _timer->set(0.5, 0.5, NetProcessor::on_timer, this);
+        _timer->addTimer(_reactor);
+    }
+}
+
+void NetProcessor::setup_notifier()
+{
+    _notifier = new Notifier(this);
+    if (_notifier == 0)
+    {
+        fprintf(stderr, "Notifier start error\n");
+        exit(-1);
+    }
 }
 
 }
