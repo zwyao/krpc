@@ -9,13 +9,14 @@ using namespace knet;
 
 int g_channel_id = 0;
 int g_count = 5000000;
-void echo(int fd)
+void echo(int fd, const char* str)
 {
     char inbuffer[1024];
     char outbuffer[1024];
     char* p = outbuffer + 8;
-    strcpy(p, "hello world!");
+    strcpy(p, str);
     int len = strlen(p)+1;
+    int str_len = len;
 
     p -= 8;
 
@@ -34,9 +35,9 @@ void echo(int fd)
     p = inbuffer + 8;
     fprintf(stderr, "%s\n", p);
 
-    assert(strcmp(p, "hello world!") == 0);
+    assert(strcmp(p, str) == 0);
     p -= 8;
-    assert(ntohl(*((unsigned int*)p)) == 13);
+    assert(ntohl(*((unsigned int*)p)) == str_len);
 }
 
 void* send(void* arg)
@@ -135,7 +136,7 @@ int main(int argc, char** argv)
     struct timeval tv1, tv2;
 
     gettimeofday(&tv1, 0);
-    echo(sock.fd());
+    echo(sock.fd(), argv[3]);
     gettimeofday(&tv2, 0);
     fprintf(stderr, "%d us\n", (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec));
 

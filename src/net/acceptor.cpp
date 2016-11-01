@@ -1,6 +1,6 @@
 #include "acceptor.h"
 #include "tcp_socket.h"
-#include "net_manager.h"
+#include "net_processor.h"
 #include "net_connection.h"
 #include "defines.h"
 
@@ -10,12 +10,12 @@
 namespace knet
 {
 
-Acceptor::Acceptor(NetManager* manager, int port):
-    _net_manager(manager),
+Acceptor::Acceptor(NetProcessor* processor, int port):
+    _net_processor(processor),
     _port(port),
     _ready(0)
 {
-    assert(_net_manager != 0);
+    assert(_net_processor != 0);
 
     SET_HANDLE(this, &Acceptor::receiveConnection);
     this->listen();
@@ -38,7 +38,7 @@ void Acceptor::listen()
         return;
     }
 
-    _net_manager->addConnection(new NetConnection(sock, this, NetConnection::LISTEN));
+    _net_processor->addConnection(new NetConnection(sock, this, NetConnection::LISTEN));
     _ready = 1;
 }
 
@@ -47,7 +47,7 @@ int Acceptor::receiveConnection(int code, void* data)
     switch (code)
     {
         case EVENT_NEW_CONNECTION:
-            _net_manager->newConnection((TcpSocket*)data);
+            _net_processor->newConnection((TcpSocket*)data);
             break;
         case EVENT_NET_EOF:
             break;

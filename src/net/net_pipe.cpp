@@ -1,14 +1,14 @@
 #include "net_pipe.h"
-#include "net_manager.h"
+#include "net_processor.h"
 
 namespace knet
 {
 
 int NetPipe::sendUnsafe(util::Buffer& pack)
 {
-    NetManager* manager = global::g_net_managers[_manager_id];
-    assert(manager != 0 && manager->myID() == _manager_id);
-    int ret = manager->send(_conn_id, _mask, _channel_id, pack);
+    NetProcessor* processor = detail::g_net_processors[_processor_id];
+    assert(processor != 0 && processor->myID() == _processor_id);
+    int ret = processor->send(_conn_id, _mask, _channel_id, pack);
     return ret >= 0 ? 0 : -1;
 }
 

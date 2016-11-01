@@ -29,11 +29,7 @@ int main(int argc, char** argv)
     global::large_buffer_pool_init(1024, 8192);
 
     Demo demo;
-    NetManager net_manager(&demo);
-    fprintf(stderr, "%d: %p: %p\n",
-            net_manager.myID(),
-            &net_manager,
-            global::g_net_managers[net_manager.myID()]);
+    NetManager net_manager(&demo, 1);
 
     net_manager.startAcceptor(9090);
     net_manager.run();

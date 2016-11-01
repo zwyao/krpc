@@ -14,7 +14,6 @@ namespace knet
 {
 
 class CallbackObj;
-class NetManager;
 class NetConnection
 {
     public:
@@ -27,7 +26,6 @@ class NetConnection
 
     public:
         NetConnection():
-            _net_manager(0),
             _reactor(0),
             _io(evnet::EvIo::create()),
             _sock(0),
@@ -42,7 +40,6 @@ class NetConnection
         NetConnection(TcpSocket* sock,
                 CallbackObj* cb,
                 NetConnection::State state):
-            _net_manager(0),
             _reactor(0),
             _io(evnet::EvIo::create()),
             _sock(sock),
@@ -71,12 +68,10 @@ class NetConnection
         void handleTimeoutEvent();
 
         // 加入事件循环
-        inline void join(NetManager* manager,
-                evnet::EvLoop* reactor,
+        inline void join(evnet::EvLoop* reactor,
                 const int id,
                 const int mask)
         {
-            _net_manager = manager;
             _reactor = reactor;
             _id = id;
             _mask = mask;
@@ -160,7 +155,6 @@ class NetConnection
         static void processor(int event, void* data);
 
     private:
-        NetManager* _net_manager;
         evnet::EvLoop* _reactor;
         evnet::EvIo* _io;
 

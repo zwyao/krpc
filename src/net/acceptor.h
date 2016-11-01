@@ -6,11 +6,11 @@
 namespace knet
 {
 
-class NetManager;
+class NetProcessor;
 class Acceptor : public CallbackObj
 {
     public:
-        Acceptor(NetManager* manager, int port);
+        Acceptor(NetProcessor* processor, int port);
 
         virtual ~Acceptor();
 
@@ -22,7 +22,7 @@ class Acceptor : public CallbackObj
         void listen();
 
     private:
-        NetManager* const _net_manager;
+        NetProcessor* const _net_processor;
         int _port;
         int _ready; // 1: ready, 0:not ready
 };

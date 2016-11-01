@@ -5,23 +5,48 @@
 #include "net_event.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+
+namespace detail 
+{
+
+util::IDCreator g_processor_id_creator(0);
+knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
+
+}
 
 namespace knet
 {
 
 NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* processor):
-    _net_manager(net_manager),
+    _reactor(net_manager->getReactor()),
     _processor(processor),
     _timer_queue(),
     _timer(0),
-    _frame_limit(util::IOBuffer::getSmallBufferSize() - 8)
+    _mask_generator(0),
+    _id(detail::g_processor_id_creator.nextID()),
+    _frame_limit(util::IOBuffer::getSmallBufferSize() - 8),
+    _conn_empty_list(0)
 {
     SET_HANDLE(this, &NetProcessor::process);
 
-    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
-        _session_set[i]._conn_id = i;
+    if (_id >= NET_MANAGER_NUM)
+    {
+        fprintf(stderr, "Too many net processor\n");
+        abort();
+    }
+
+    detail::g_net_processors[_id] = this;
+    fprintf(stderr, "net processor %d start\n", _id);
 
     assert(_processor != 0);
+    assert(MAX_CONNECTION_EACH_MANAGER > 0);
+
+    init_empty_conn_list();
+    init_conn_ids();
+
+    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
+        _session_set[i]._conn_id = i;
 
     if (net_manager->getIdleTimeout() > 0)
     {
@@ -30,7 +55,7 @@ NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* process
         assert(_timer != 0);
 
         _timer->set(0.5, 0.5, NetProcessor::on_timer, this);
-        _timer->addTimer(net_manager->getReactor());
+        _timer->addTimer(_reactor);
     }
 }
 
@@ -38,6 +63,10 @@ NetProcessor::~NetProcessor()
 {
     if (_timer)
         evnet::EvTimer::destroy(_timer);
+
+    for (int i = 0; i < _conn_empty_list_num; ++i)
+        delete _conn_empty_list[i];
+    delete _conn_empty_list;
 }
 
 int NetProcessor::process(int code, void* data)
@@ -66,7 +95,7 @@ int NetProcessor::process(int code, void* data)
             {
                 session.close();
                 if (_timer) _timer_queue.remove(input->the_conn);
-                _net_manager->delConnection(input->the_conn);
+                delConnection(input->the_conn);
                 return -1;
             }
             break;
@@ -76,7 +105,7 @@ int NetProcessor::process(int code, void* data)
 
             session.close();
             if (_timer) _timer_queue.remove(input->the_conn);
-            _net_manager->delConnection(input->the_conn);
+            delConnection(input->the_conn);
             break;
 
         case EVENT_NET_ERROR:
@@ -84,7 +113,7 @@ int NetProcessor::process(int code, void* data)
 
             session.close();
             if (_timer) _timer_queue.remove(input->the_conn);
-            _net_manager->delConnection(input->the_conn);
+            delConnection(input->the_conn);
             break;
 
         default:
@@ -159,7 +188,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
                 pack.produce_unsafe(session._frame_size);
                 buffer.consume_unsafe(session._frame_size);
 
-                NetPipe pipe(_net_manager->myID(),
+                NetPipe pipe(_id,
                         session._conn_id,
                         session._mask,
                         session._channel_id);
@@ -198,8 +227,35 @@ void NetProcessor::TimeWheel::check()
         fprintf(stderr, "timeout: %d:%d\n", conn->myID(), conn->myMask());
         list.pop_front();
         _net_processor->close_session(conn);
-        _net_processor->_net_manager->delConnection(conn);
+        _net_processor->delConnection(conn);
     }
+}
+
+void NetProcessor::init_empty_conn_list()
+{
+    int num = MAX_CONNECTION_EACH_MANAGER / 100;
+    if (num == 0)
+        num = MAX_CONNECTION_EACH_MANAGER - 1;
+
+    if (num > 0)
+    {
+        _conn_empty_list = new NetConnection*[num];
+        for (int i = 0; i < num; ++i)
+            _conn_empty_list[i] = new NetConnection();
+    }
+
+    _conn_empty_list_num = num;
+    _conn_empty_list_size = num;
+}
+
+void NetProcessor::init_conn_ids()
+{
+    int id = MAX_CONNECTION_EACH_MANAGER;
+    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
+        _conn_ids[i] = --id;
+    _conn_id_num = MAX_CONNECTION_EACH_MANAGER;
+
+    memset(_connections, 0, sizeof(_connections));
 }
 
 }

@@ -100,11 +100,13 @@ void NetConnection::recv_data()
 void NetConnection::processor(int event, void* data)
 {
     NetConnection* conn = (NetConnection*)data;
+    /*
     if (event & evnet::EV_TIMER)
     {
         conn->handleTimeoutEvent();
         return;
     }
+    */
 
     if (event & evnet::EV_IO_READ)
         conn->handleReadEvent();

@@ -9,11 +9,11 @@ namespace knet
 class NetPipe
 {
     public:
-        NetPipe(int manager_id,
+        NetPipe(int processor_id,
                 int conn_id,
                 int mask,
                 unsigned int channel_id):
-            _manager_id(manager_id),
+            _processor_id(processor_id),
             _conn_id(conn_id),
             _mask(mask),
             _channel_id(channel_id)
@@ -40,7 +40,7 @@ class NetPipe
         int send(util::Buffer& pack);
 
     private:
-        int _manager_id;
+        int _processor_id;
         int _conn_id;
         int _mask;
         unsigned int _channel_id;
