@@ -21,7 +21,7 @@ namespace knet
 NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* processor):
     _reactor(net_manager->getReactor()),
     _processor(processor),
-    _notifier(0),
+    _send_notifier(0),
     _timer(0),
     _timer_queue(),
     _mask_generator(0),
@@ -277,8 +277,8 @@ void NetProcessor::setup_timer(int timeout)
 
 void NetProcessor::setup_notifier()
 {
-    _notifier = new Notifier(this);
-    if (_notifier == 0)
+    _send_notifier = new Notifier(this);
+    if (_send_notifier == 0)
     {
         fprintf(stderr, "Notifier start error\n");
         exit(-1);

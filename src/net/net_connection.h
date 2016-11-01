@@ -35,6 +35,7 @@ class NetConnection
             _mask(-1),
             _net_code(EVENT_NONE)
         {
+            assert(_io != 0);
         }
 
         NetConnection(TcpSocket* sock,

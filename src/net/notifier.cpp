@@ -12,12 +12,6 @@ Notifier::Notifier(NetProcessor* processor):
     _net_processor(processor)
 {
     SET_HANDLE(this, &Notifier::notified);
-    _fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (_fd < 0)
-    {
-        fprintf(stderr, "Failed create eventfd\n");
-        abort();
-    }
     this->start();
 }
 
@@ -27,6 +21,13 @@ Notifier::~Notifier()
 
 void Notifier::start()
 {
+    _fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (_fd < 0)
+    {
+        fprintf(stderr, "Failed create eventfd\n");
+        abort();
+    }
+
     TcpSocket* const sock = new TcpSocket(_fd);
     if (sock)
     {

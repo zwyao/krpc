@@ -227,7 +227,7 @@ class NetProcessor : public CallbackObj
     private:
         evnet::EvLoop* _reactor;
         NetRequestProcessor* _processor;
-        Notifier* _notifier;
+        Notifier* _send_notifier;
         evnet::EvTimer* _timer;
         TimeWheel _timer_queue;
         util::IDCreatorUnsafe _mask_generator;
