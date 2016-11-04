@@ -126,7 +126,7 @@ int IOBuffer::read(int fd, int max)
     if (unlikely(_buffer_list.empty()))
     {
         Buffer buffer(8192);
-        _buffer_list.push_back(new BufferEntry(buffer));
+        _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
     }
 
     assert(_buffer_list.size() == 1);
@@ -161,7 +161,7 @@ int IOBuffer::write(int fd, bool& null_loop)
 
     int will_send_size = 0;
     int vec_idx = 0;
-    BufferEntry* entry = _buffer_list.front();
+    BufferList::BufferEntry* entry = _buffer_list.front();
     while (vec_idx < sendv_size)
     {
         const int nbytes = entry->buffer.getAvailableDataSize();
@@ -180,7 +180,7 @@ int IOBuffer::write(int fd, bool& null_loop)
         int i = 0;
         while (i < sendv_size)
         {
-            BufferEntry* entry = _buffer_list.front();
+            BufferList::BufferEntry* entry = _buffer_list.front();
             _buffer_list.pop_front();
             delete entry;
             ++i;
@@ -195,7 +195,7 @@ int IOBuffer::write(int fd, bool& null_loop)
     else
     {
         int nbytes = nwrite;
-        BufferEntry* entry = _buffer_list.front();
+        BufferList::BufferEntry* entry = _buffer_list.front();
         int have_data;
         while ((have_data = entry->buffer.getAvailableDataSize()) <= nbytes)
         {

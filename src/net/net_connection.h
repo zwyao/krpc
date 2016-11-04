@@ -121,11 +121,10 @@ class NetConnection
          * 把buffer添加到发送队列
          * @param[in] buffer 的内存会被夺走
          */
-        inline int send(util::Buffer& buffer)
+        inline int send(util::BufferList::BufferEntry* entry)
         {
-            // 至此，buffer被夺走
-            _out_buffer.append(buffer);
-            if (_out_buffer.size() == 1)
+            _out_buffer.append(entry);
+            if ((_io->events() & evnet::EV_IO_WRITE) == 0)
                 _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
             return 0;
         }
@@ -143,14 +142,10 @@ class NetConnection
             }
         };
 
-        int sendCount()
-        {
-            return _out_buffer.size();
-        }
-
     private:
         void recv_connection();
         void recv_data();
+        void recv_notify();
 
     private:
         static void processor(int event, void* data);

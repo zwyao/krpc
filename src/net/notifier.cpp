@@ -43,6 +43,12 @@ void Notifier::start()
 
 int Notifier::notified(int code, void* data)
 {
+    (void)code;
+    (void)data;
+    uint64_t one = 0;
+    ::read(_fd, &one, sizeof(one));
+
+    _net_processor->sendPendingData();
     return 0;
 }
 

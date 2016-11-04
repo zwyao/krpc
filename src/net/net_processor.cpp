@@ -2,7 +2,6 @@
 #include "net_manager.h"
 #include "net_request_processor.h"
 #include "net_event.h"
-#include "notifier.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +42,7 @@ NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* process
 
     detail::g_net_processors[_id] = this;
     setup_timer(net_manager->getIdleTimeout());
+    evnet::ev_set_wakeup(_reactor, doPendingData, this);
 }
 
 NetProcessor::~NetProcessor()
@@ -202,6 +202,43 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
     }
 
     return 0;
+}
+
+void NetProcessor::sendPendingData()
+{
+    util::BufferList::TList pending_data;
+    {
+        util::Guard<util::MutexLocker> m(_locker);
+        pending_data.swap(_pending_list);
+    }
+
+    while (!pending_data.empty())
+    {
+        util::BufferList::BufferEntry* entry = pending_data.front();
+        pending_data.pop_front();
+
+        int conn_id = entry->target.conn_id;
+        int mask = entry->target.mask;
+
+        // 包含负值的检查
+        assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
+
+        NetConnection* conn = _connections[conn_id];
+        if (unlikely(conn == 0 || conn->myMask() != mask))
+        {
+            abort();
+            delete entry;
+            continue;
+        }
+
+        conn->send(entry);
+    }
+}
+
+void NetProcessor::doPendingData(void* data)
+{
+    NetProcessor* processor = (NetProcessor*)data;
+    processor->sendPendingData();
 }
 
 void NetProcessor::on_timer(int event, void* data)

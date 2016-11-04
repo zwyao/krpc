@@ -2,8 +2,8 @@
 #define __IO_BUFFER_H__
 
 #include "buffer.h"
+#include "buffer_list.h"
 #include "fixed_size_allocator.h"
-#include "list.h"
 
 #include <assert.h>
 
@@ -12,20 +12,6 @@ namespace util
 
 class IOBuffer
 {
-    private:
-        struct BufferEntry
-        {
-            Buffer buffer;
-            util::ListOp::ListNode list_node;
-
-            BufferEntry(Buffer& buf):
-                buffer(buf)
-            {
-            }
-        };
-
-        typedef util::List<BufferEntry, &BufferEntry::list_node> BufferList;
-
     public:
         IOBuffer()
         {
@@ -43,15 +29,14 @@ class IOBuffer
         {
             while (!_buffer_list.empty())
             {
-                BufferEntry* entry = _buffer_list.front();
+                BufferList::BufferEntry* entry = _buffer_list.front();
                 _buffer_list.pop_front();
                 delete entry;
             }
         }
 
-        inline void append(Buffer& buffer)
+        inline void append(BufferList::BufferEntry* entry)
         {
-            BufferEntry* entry = new BufferEntry(buffer);
             _buffer_list.push_back(entry);
         }
 
@@ -69,7 +54,7 @@ class IOBuffer
         int read(int fd, int max_read, Buffer& buffer);
 
     private:
-        BufferList _buffer_list;
+        BufferList::TList _buffer_list;
         //Buffer _buffer;
 
     public:

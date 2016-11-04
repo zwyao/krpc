@@ -53,11 +53,14 @@ void EvIo::setEvent(int fd, int events, EvFun cb, void* data)
     _core->events = events;
     _core->cb = cb;
     _core->data = data;
+
+    _events = events;
 }
 
 void EvIo::setEvFlag(int events)
 {
     _core->events = events;
+    _events = events;
 }
 
 void EvIo::modEvFlag(int events)
@@ -68,6 +71,8 @@ void EvIo::modEvFlag(int events)
         return;
 
     _core->events = events;
+    _events = events;
+
     ev_io_mod(_loop, _core);
 }
 
@@ -89,11 +94,6 @@ void EvIo::setPriority(int pri)
 int EvIo::fd() const
 {
     return _core->fd;
-}
-
-int EvIo::events() const
-{
-    return _core->events;
 }
 
 void* EvIo::data() const

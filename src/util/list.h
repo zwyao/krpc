@@ -41,36 +41,49 @@ class List
 {
     public:
         List():
+            _root(new ListOp::ListNode()),
             _size(0)
         {
         }
 
         ~List()
         {
-            clear();
+            if (_root) delete _root;
+            _root = 0;
+        }
+
+        void swap(List<T, list_node>& other)
+        {
+            ListOp::ListNode* tmp_root = _root;
+            _root = other._root;
+            other._root = tmp_root;
+
+            int tmp_size = _size;
+            _size = other._size;
+            other._size = tmp_size;
         }
 
         void push_back(T* item)
         {
-            ListOp::insert(&(item->*list_node), _root.prev);
+            ListOp::insert(&(item->*list_node), _root->prev);
             ++_size;
         }
 
         void push_front(T* item)
         {
-            ListOp::insert(&(item->*list_node), &_root);
+            ListOp::insert(&(item->*list_node), _root);
             ++_size;
         }
 
         void pop_back()
         {
-            ListOp::remove(_root.prev);
+            ListOp::remove(_root->prev);
             --_size;
         }
 
         void pop_front()
         {
-            ListOp::remove(_root.next);
+            ListOp::remove(_root->next);
             --_size;
         }
 
@@ -82,12 +95,12 @@ class List
 
         T* back()
         {
-            return (T*)((char*)(_root.prev)-(char*)_node_offset);
+            return (T*)((char*)(_root->prev)-(char*)_node_offset);
         }
 
         T* front()
         {
-            return (T*)((char*)(_root.next)-(char*)_node_offset);
+            return (T*)((char*)(_root->next)-(char*)_node_offset);
         }
 
         T* next(T* item)
@@ -102,12 +115,12 @@ class List
 
         bool empty() const
         {
-            return (_root.next == &_root);
+            return (_root->next == _root);
         }
 
         int size() const { return _size; }
 
-        ListOp::ListNode& root() { return _root; }
+        ListOp::ListNode& root() { return &_root; }
 
         void clear()
         {
@@ -130,7 +143,7 @@ class List
         static ListOp::ListNode* const _node_offset;
 
     protected:
-        ListOp::ListNode _root;
+        ListOp::ListNode* _root;
         int _size;
 };
 

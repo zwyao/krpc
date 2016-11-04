@@ -26,6 +26,7 @@ void NetConnection::handleReadEvent()
             recv_data();
             break;
         case SEND_NOTIFY:
+            recv_notify();
             break;
         default:
             assert(0);
@@ -95,6 +96,11 @@ void NetConnection::recv_data()
         Input input(this, 0);
         _cb->handleEvent(EVENT_NET_ERROR, (void*)&input);
     }
+}
+
+void NetConnection::recv_notify()
+{
+    _cb->handleEvent(0, 0);
 }
 
 void NetConnection::processor(int event, void* data)

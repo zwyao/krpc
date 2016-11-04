@@ -18,7 +18,8 @@ class EvIo
     public:
         EvIo():
             _core(0),
-            _loop(0)
+            _loop(0),
+            _events(0)
         {}
 
         ~EvIo() {}
@@ -71,7 +72,7 @@ class EvIo
         void setPriority(int pri);
 
         int fd() const;
-        int events() const;
+        int events() const { return _events; }
         void* data() const;
 
         /*
@@ -102,6 +103,7 @@ class EvIo
     private:
         EvIoCore* _core;
         EvLoop* _loop;
+        int _events;
         unsigned int _egen;
 };
 

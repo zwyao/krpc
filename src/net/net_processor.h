@@ -4,17 +4,18 @@
 #include "net_connection.h"
 #include "id_creator.h"
 #include "callback_object.h"
-#include "buffer.h"
 #include "defines.h"
 #include "current_thread.h"
 #include "ev_timer.h"
+#include "notifier.h"
+#include "buffer.h"
+#include "locker.h"
 
 #include <string.h>
 
 namespace knet
 {
 
-class Notifier;
 class NetRequestProcessor;
 class NetManager;
 // 网络请求处理的入口
@@ -114,6 +115,9 @@ class NetProcessor : public CallbackObj
         void init();
 
         int process(int code, void* data);
+        void sendPendingData();
+
+        inline int myID() const { return _id; }
 
         // 新连接到来
         //NetConnection will be owned by NetProcessor
@@ -180,12 +184,15 @@ class NetProcessor : public CallbackObj
         inline int send(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             if (_thread_id == util::CurrentThread::getTid())
-                return sendMe(conn_id, mask, channel_id, buffer);
+                return sendByMe(conn_id, mask, channel_id, buffer);
             else
-                return -1;
+                return sendByQueue(conn_id, mask, channel_id, buffer);;
         }
 
-        inline int myID() const { return _id; }
+        inline int sendAsynTest(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        {
+            return sendByQueue(conn_id, mask, channel_id, buffer);;
+        }
 
     private:
         void init_empty_conn_list();
@@ -212,7 +219,7 @@ class NetProcessor : public CallbackObj
             session.close();
         }
 
-        inline int sendMe(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int sendByMe(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             // 包含负值的检查
             assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
@@ -220,18 +227,42 @@ class NetProcessor : public CallbackObj
             NetConnection* conn = _connections[conn_id];
             if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
 
-            char* buf = buffer.getBuffer();
-            assert(buffer.consumer() - buf == 8);
+            char* ptr = buffer.getBuffer();
+            assert(buffer.consumer() - ptr == 8);
 
-            *((unsigned int*)buf) = htonl(buffer.getAvailableDataSize());
-            *((unsigned int*)(buf+4)) = htonl(channel_id);
+            *((unsigned int*)ptr) = htonl(buffer.getAvailableDataSize());
+            *((unsigned int*)(ptr+4)) = htonl(channel_id);
             buffer.consume_unsafe(-8);
 
-            return conn->send(buffer);
+            // 至此，buffer被夺走
+            util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, 0, 0);
+            return conn->send(entry);
+        }
+
+        inline int sendByQueue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        {
+            char* ptr = buffer.getBuffer();
+            assert(buffer.consumer() - ptr == 8);
+
+            *((unsigned int*)ptr) = htonl(buffer.getAvailableDataSize());
+            *((unsigned int*)(ptr+4)) = htonl(channel_id);
+            buffer.consume_unsafe(-8);
+
+            // 至此，buffer被夺走
+            util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
+            {
+                util::Guard<util::MutexLocker> m(_locker);
+                _pending_list.push_back(entry);
+            }
+            evnet::ev_wakeup(_reactor);
+            //_send_notifier->notify();
+
+            return 0;
         }
 
     private:
         static void on_timer(int event, void* data);
+        static void doPendingData(void* data);
 
     private:
         evnet::EvLoop* const _reactor;
@@ -254,6 +285,9 @@ class NetProcessor : public CallbackObj
         NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
         // connection的id到NetConnection的映射表
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
+
+        util::MutexLocker _locker;
+        util::BufferList::TList _pending_list;
 
         friend class TimeWheel;
 };

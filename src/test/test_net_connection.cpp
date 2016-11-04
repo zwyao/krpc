@@ -19,7 +19,8 @@ class Demo : public NetRequestProcessor
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            pipe.sendUnsafe(buffer);
+            //pipe.sendAsynTest(buffer);
+            pipe.send(buffer);
         }
 };
 
@@ -30,8 +31,7 @@ int main(int argc, char** argv)
 
     Demo demo;
     NetManager net_manager(&demo, 1);
-
-    net_manager.startAcceptor(9090);
+    net_manager.startAcceptor(9000);
     net_manager.run();
 }
 

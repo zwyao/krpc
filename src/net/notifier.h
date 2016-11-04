@@ -4,6 +4,9 @@
 #include "callback_object.h"
 #include "io_buffer.h"
 
+#include <stdint.h>
+#include <unistd.h>
+
 namespace knet
 {
 
@@ -15,6 +18,12 @@ class Notifier : public CallbackObj
         virtual ~Notifier();
 
         int notified(int code, void* data);
+
+        inline void notify()
+        {
+            uint64_t one = 1;
+            ::write(_fd, &one, sizeof(one));
+        }
 
     private:
         void start();

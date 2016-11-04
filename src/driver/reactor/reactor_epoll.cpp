@@ -66,7 +66,7 @@ void ReactorEpoll::epoll_poll(EvLoop* loop, int timeout)
     if (unlikely(ev_cnt < 0))
     {
         if (errno != EINTR)
-            assert(0 && "(evnet) epoll_wait");
+            abort();
         return;
     }
 
@@ -79,6 +79,7 @@ void ReactorEpoll::epoll_poll(EvLoop* loop, int timeout)
         {
             //if (likely((uint32_t)loop->wakeup.mgen == (uint32_t)(ev->data.u64 >> 32)))
                 //loop->wakeup.flag = 1;
+            loop->wakeup.flag = 1;
             ++i;
             continue;
         }
@@ -144,7 +145,11 @@ int ReactorEpoll::init()
         return -1;
 
     int pfd[2];
-    assert(pipe(pfd) == 0);
+    if (pipe(pfd) != 0)
+    {
+        ::close(fd);
+        return -1;
+    }
 
     fcntl(fd, F_SETFD, FD_CLOEXEC);
     fcntl(pfd[0], F_SETFD, FD_CLOEXEC);
