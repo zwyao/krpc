@@ -2,6 +2,7 @@
 #define __NET_PIPE_H__
 
 #include "buffer.h"
+#include "net_processor.h"
 
 namespace knet
 {
@@ -22,22 +23,19 @@ class NetPipe
         ~NetPipe() { }
 
         /*
-         * 线程不安全接口
-         * 在io线程的事件循环中,获取到一个pack之后,可以调用这个不安全接口
-         * @param[in] pack, 发送成功pack的内存会被夺走
-         * @return 0: 成功加入发送队列
-         *        -1: 失败
-         */
-        int sendUnsafe(util::Buffer& pack);
-
-        /*
          * 线程安全接口
          * 异步发送数据
          * @param[in] pack, 发送成功pack的内存会被夺走
          * @return 0: 成功加入发送队列
          *        -1: 失败
          */
-        int send(util::Buffer& pack);
+        int send(util::Buffer& pack)
+        {
+            NetProcessor* processor = detail::g_net_processors[_processor_id];
+            assert(processor != 0 && processor->myID() == _processor_id);
+            int ret = processor->send(_conn_id, _mask, _channel_id, pack);
+            return ret >= 0 ? 0 : -1;
+        }
 
     private:
         int _processor_id;

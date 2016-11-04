@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+namespace knet
+{
+
 namespace detail 
 {
 
@@ -15,9 +18,6 @@ knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-namespace knet
-{
-
 NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* processor):
     _reactor(net_manager->getReactor()),
     _processor(processor),
@@ -25,6 +25,7 @@ NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* process
     _timer(0),
     _timer_queue(),
     _mask_generator(0),
+    _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(util::IOBuffer::getSmallBufferSize() - 8),
     _conn_empty_list(0)
@@ -56,7 +57,7 @@ NetProcessor::~NetProcessor()
 
 void NetProcessor::init()
 {
-    fprintf(stderr, "net processor %d start\n", _id);
+    fprintf(stderr, "net processor %d(%d) start\n", _id, _thread_id);
 
     init_empty_conn_list();
     init_conn_ids();

@@ -6,6 +6,7 @@
 #include "callback_object.h"
 #include "buffer.h"
 #include "defines.h"
+#include "current_thread.h"
 #include "ev_timer.h"
 
 #include <string.h>
@@ -178,20 +179,10 @@ class NetProcessor : public CallbackObj
 
         inline int send(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
-            // 包含负值的检查
-            assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
-
-            NetConnection* conn = _connections[conn_id];
-            if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
-
-            char* buf = buffer.getBuffer();
-            assert(buffer.consumer() - buf == 8);
-
-            *((unsigned int*)buf) = htonl(buffer.getAvailableDataSize());
-            *((unsigned int*)(buf+4)) = htonl(channel_id);
-            buffer.consume_unsafe(-8);
-
-            return conn->send(buffer);
+            if (_thread_id == util::CurrentThread::getTid())
+                return sendMe(conn_id, mask, channel_id, buffer);
+            else
+                return -1;
         }
 
         inline int myID() const { return _id; }
@@ -221,19 +212,38 @@ class NetProcessor : public CallbackObj
             session.close();
         }
 
+        inline int sendMe(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        {
+            // 包含负值的检查
+            assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
+
+            NetConnection* conn = _connections[conn_id];
+            if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
+
+            char* buf = buffer.getBuffer();
+            assert(buffer.consumer() - buf == 8);
+
+            *((unsigned int*)buf) = htonl(buffer.getAvailableDataSize());
+            *((unsigned int*)(buf+4)) = htonl(channel_id);
+            buffer.consume_unsafe(-8);
+
+            return conn->send(buffer);
+        }
+
     private:
         static void on_timer(int event, void* data);
 
     private:
-        evnet::EvLoop* _reactor;
-        NetRequestProcessor* _processor;
+        evnet::EvLoop* const _reactor;
+        NetRequestProcessor* const _processor;
         Notifier* _send_notifier;
         evnet::EvTimer* _timer;
         TimeWheel _timer_queue;
         util::IDCreatorUnsafe _mask_generator;
 
-        int _id;
-        int _frame_limit;
+        const pid_t _thread_id;
+        const int _id;
+        const int _frame_limit;
         NetConnection** _conn_empty_list;
         int _conn_empty_list_num;
         int _conn_empty_list_size;
@@ -248,8 +258,6 @@ class NetProcessor : public CallbackObj
         friend class TimeWheel;
 };
 
-}
-
 namespace detail
 {
 
@@ -258,6 +266,7 @@ extern knet::NetProcessor* g_net_processors[NET_MANAGER_NUM];
 
 }
 
+}
 
 #endif
 
