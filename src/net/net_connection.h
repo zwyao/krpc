@@ -123,8 +123,23 @@ class NetConnection
          */
         inline int send(util::BufferList::BufferEntry* entry)
         {
+            /*
+            int ret = _out_buffer.write(_sock->fd(), entry);
+            if (ret >= 0)
+            {
+                if (_out_buffer.size() == 1)
+                    _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
+                return 0;
+            }
+            else
+            {
+                Input input(this, 0);
+                _cb->handleEvent(EVENT_NET_ERROR, (void*)&input);
+                return -1;
+            }
+            */
             _out_buffer.append(entry);
-            if ((_io->events() & evnet::EV_IO_WRITE) == 0)
+            if (_out_buffer.size() == 1)
                 _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
             return 0;
         }

@@ -216,6 +216,46 @@ int IOBuffer::write(int fd, bool& null_loop)
     }
 }
 
+/*
+ * 首先尝试立刻发送
+ * 这个方案，影响吞吐量
+ */
+int IOBuffer::write(int fd, BufferList::BufferEntry* entry)
+{
+    const int nbytes = entry->buffer.getAvailableDataSize();
+    const int size = _buffer_list.size();
+    if (size == 0)
+    {
+        int ret = ::write(fd, entry->buffer.consumer(), nbytes);
+        if (ret == nbytes)
+        {
+            delete entry;
+            return ret;
+        }
+        else if (ret >= 0)
+        {
+            entry->buffer.consume_unsafe(ret);
+            _buffer_list.push_back(entry);
+            return ret;
+        }
+        else if (errno == EAGAIN || errno == EINTR)
+        {
+            _buffer_list.push_back(entry);
+            return nbytes;
+        }
+        else
+        {
+            delete entry;
+            return -1;
+        }
+    }
+    else
+    {
+        _buffer_list.push_back(entry);
+        return nbytes;
+    }
+}
+
 int IOBuffer::read(int fd, int max_read, Buffer& buffer)
 {
     char* ptr = buffer.producer();

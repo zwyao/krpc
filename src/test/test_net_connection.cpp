@@ -19,8 +19,8 @@ class Demo : public NetRequestProcessor
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            //pipe.sendAsynTest(buffer);
-            pipe.send(buffer);
+            pipe.sendAsynTest(buffer);
+            //pipe.send(buffer);
         }
 };
 
