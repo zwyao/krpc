@@ -7,11 +7,12 @@
 
 using namespace knet;
 
+int g_channel_id_send = 0;
+int g_channel_id_recv = 0;
 int g_channel_id = 0;
 int g_count = 5000000;
 void echo(int fd, const char* str)
 {
-    char inbuffer[1024];
     char outbuffer[1024];
     char* p = outbuffer + 8;
     strcpy(p, str);
@@ -23,21 +24,23 @@ void echo(int fd, const char* str)
     *((unsigned int*)p) = htonl(len);
     *((unsigned int*)(p+4)) = htonl(g_channel_id);
 
-    ++g_channel_id;
-
     len += 8;
     int ret = ::write(fd, outbuffer, len);
     assert(ret == len);
 
+    char inbuffer[1024];
     ret = ::read(fd, inbuffer, 1024);
     assert(ret == len);
 
     p = inbuffer + 8;
-    fprintf(stderr, "%s\n", p);
+    fprintf(stderr, "%s:%d\n", p, ntohl(*((unsigned int*)(inbuffer+4))));
 
+    assert(ntohl(*((unsigned int*)(inbuffer+4))) == g_channel_id);
     assert(strcmp(p, str) == 0);
     p -= 8;
     assert(ntohl(*((unsigned int*)p)) == str_len);
+
+    ++g_channel_id;
 }
 
 void* send(void* arg)
@@ -55,8 +58,8 @@ void* send(void* arg)
     int i = 0;
     while (i < g_count)
     {
-        *((unsigned int*)(buffer+4)) = htonl(g_channel_id);
-        ++g_channel_id;
+        *((unsigned int*)(buffer+4)) = htonl(g_channel_id_send);
+        ++g_channel_id_send;
 
         int left = len;
         p = buffer;
@@ -98,11 +101,13 @@ void* recv(void* arg)
             while (have >= 21)
             {
                 assert(ntohl(*((unsigned int*)data)) == 13);
+                assert(ntohl(*((unsigned int*)(data+4))) == g_channel_id_recv);
                 assert(strcmp(data+8, "hello world!") == 0);
 
                 data += 21;
                 have -= 21;
 
+                ++g_channel_id_recv;
                 ++i;
             }
 
@@ -135,12 +140,15 @@ int main(int argc, char** argv)
 
     struct timeval tv1, tv2;
 
+    /*
     gettimeofday(&tv1, 0);
+    echo(sock.fd(), argv[3]);
+    echo(sock.fd(), argv[3]);
     echo(sock.fd(), argv[3]);
     gettimeofday(&tv2, 0);
     fprintf(stderr, "%d us\n", (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec));
+    */
 
-    /*
     gettimeofday(&tv1, 0);
     pthread_t r;
     pthread_t w;
@@ -152,6 +160,5 @@ int main(int argc, char** argv)
     gettimeofday(&tv2, 0);
     long cost = (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec);
     fprintf(stderr, "%ld us: %d\n", cost, cost/g_count);
-    */
 }
 
