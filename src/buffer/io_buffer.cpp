@@ -8,6 +8,8 @@
 namespace global
 {
 
+int g_read_io_buffer_limit = 8192;
+
 void small_buffer_pool_init(int block_size, int block_count)
 {
     util::IOBuffer::small_buffer_pool_init(block_size, block_count);
@@ -125,7 +127,7 @@ int IOBuffer::read(int fd, int max)
 {
     if (unlikely(_buffer_list.empty()))
     {
-        Buffer buffer(8192);
+        Buffer buffer(global::g_read_io_buffer_limit);
         _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
     }
 

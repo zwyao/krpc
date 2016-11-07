@@ -2,6 +2,7 @@
 #include "net_manager.h"
 #include "when_receive_packet.h"
 #include "net_event.h"
+#include "global.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@ NetProcessor::NetProcessor(NetManager* net_manager, WhenReceivePacket* processor
     _mask_generator(0),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
-    _frame_limit(util::IOBuffer::getSmallBufferSize() - 8),
+    _frame_limit(global::g_read_io_buffer_limit - 8),
     _conn_empty_list(0)
 {
     SET_HANDLE(this, &NetProcessor::process);
@@ -162,8 +163,9 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
             // 包含负值的检查
             if (unlikely((unsigned int)session._frame_size > (unsigned int)_frame_limit))
             {
-                fprintf(stderr, "frame size: %d too large, channel id: %u<%d>\n",
+                fprintf(stderr, "frame size: %d too large(limit %d), channel id: %u<%d>\n",
                         session._frame_size,
+                        _frame_limit,
                         session._channel_id,
                         buffer.getAvailableDataSize());
 
