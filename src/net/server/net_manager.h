@@ -8,16 +8,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace knet
-{
+namespace knet { namespace server {
 
-class NetRequestProcessor;
+class WhenReceivePacket;
 class NetProcessor;
 class Acceptor;
 class NetManager
 {
     public:
-        NetManager(NetRequestProcessor* processor, int idle_timeout = 0):
+        NetManager(WhenReceivePacket* processor, int idle_timeout = 0):
             _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
             _acceptor(0),
             _net_processor(0),
@@ -52,13 +51,13 @@ class NetManager
         evnet::EvLoop* _reactor;
         Acceptor* _acceptor;
         NetProcessor* _net_processor;
-        NetRequestProcessor* _request_processor;
+        WhenReceivePacket* _request_processor;
         // 空闲链接的timeout，不是收发数据的timeout
         // 秒级
         int _idle_timeout;
 };
 
-}
+}}
 
 #endif
 

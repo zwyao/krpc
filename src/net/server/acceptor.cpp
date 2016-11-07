@@ -7,8 +7,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-namespace knet
-{
+namespace knet { namespace server {
 
 Acceptor::Acceptor(NetProcessor* processor, int port):
     _net_processor(processor),
@@ -58,5 +57,5 @@ int Acceptor::receiveConnection(int code, void* data)
     return 0;
 }
 
-}
+}}
 

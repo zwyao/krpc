@@ -3,17 +3,15 @@
 
 #include "net_event.h"
 #include "tcp_socket.h"
+#include "callback_object.h"
 #include "io_buffer.h"
 #include "list.h"
 #include "id_creator.h"
-#include "callback_object.h"
 #include "ev.h"
 #include "ev_io.h"
 
-namespace knet
-{
+namespace knet { namespace server {
 
-class CallbackObj;
 class NetConnection
 {
     public:
@@ -38,8 +36,8 @@ class NetConnection
             assert(_io != 0);
         }
 
-        NetConnection(TcpSocket* sock,
-                CallbackObj* cb,
+        NetConnection(knet::TcpSocket* sock,
+                knet::CallbackObj* cb,
                 NetConnection::State state):
             _reactor(0),
             _io(evnet::EvIo::create()),
@@ -95,7 +93,7 @@ class NetConnection
             if (_io) _io->delEvent();
 
             //防止竞态条件: os可能重用正在关闭的fd
-            TcpSocket* const sock = _sock;
+            knet::TcpSocket* const sock = _sock;
             _sock = 0;
 
             sock->close();
@@ -114,8 +112,8 @@ class NetConnection
         inline int myMask() const { return _mask; }
 
         inline void setNetCode(EventCode code) { _net_code = code; }
-        inline void setSocket(TcpSocket* sock) { _sock = sock; }
-        inline void setCallbackObj(CallbackObj* cb) { _cb = cb; }
+        inline void setSocket(knet::TcpSocket* sock) { _sock = sock; }
+        inline void setCallbackObj(knet::CallbackObj* cb) { _cb = cb; }
 
         /*
          * 把buffer添加到发送队列
@@ -170,8 +168,8 @@ class NetConnection
         evnet::EvIo* _io;
 
         //own _sock
-        TcpSocket* _sock;
-        CallbackObj* _cb;
+        knet::TcpSocket* _sock;
+        knet::CallbackObj* _cb;
         NetConnection::State _state;
         int _id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
         int _mask;
@@ -184,7 +182,7 @@ class NetConnection
         util::ListOp::ListNode list_node;
 };
 
-}
+}}
 
 #endif
 

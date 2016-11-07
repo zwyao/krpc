@@ -1,23 +1,22 @@
 #include "net_processor.h"
 #include "net_manager.h"
-#include "net_request_processor.h"
+#include "when_receive_packet.h"
 #include "net_event.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace knet
-{
+namespace knet { namespace server {
 
 namespace detail 
 {
 
 util::IDCreator g_processor_id_creator(0);
-knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
+knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-NetProcessor::NetProcessor(NetManager* net_manager, NetRequestProcessor* processor):
+NetProcessor::NetProcessor(NetManager* net_manager, WhenReceivePacket* processor):
     _reactor(net_manager->getReactor()),
     _processor(processor),
     _send_notifier(0),
@@ -323,5 +322,5 @@ void NetProcessor::setup_notifier()
     }
 }
 
-}
+}}
 

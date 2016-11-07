@@ -13,10 +13,9 @@
 
 #include <string.h>
 
-namespace knet
-{
+namespace knet { namespace server {
 
-class NetRequestProcessor;
+class WhenReceivePacket;
 class NetManager;
 // 网络请求处理的入口
 class NetProcessor : public CallbackObj
@@ -109,7 +108,7 @@ class NetProcessor : public CallbackObj
         };
 
     public:
-        NetProcessor(NetManager* net_manager, NetRequestProcessor* processor);
+        NetProcessor(NetManager* net_manager, WhenReceivePacket* processor);
         virtual ~NetProcessor();
 
         void init();
@@ -266,7 +265,7 @@ class NetProcessor : public CallbackObj
 
     private:
         evnet::EvLoop* const _reactor;
-        NetRequestProcessor* const _processor;
+        WhenReceivePacket* const _processor;
         Notifier* _send_notifier;
         evnet::EvTimer* _timer;
         TimeWheel _timer_queue;
@@ -296,11 +295,11 @@ namespace detail
 {
 
 extern util::IDCreator g_processor_id_creator;
-extern knet::NetProcessor* g_net_processors[NET_MANAGER_NUM];
+extern knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM];
 
 }
 
-}
+}}
 
 #endif
 

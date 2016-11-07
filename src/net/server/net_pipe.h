@@ -4,8 +4,7 @@
 #include "buffer.h"
 #include "net_processor.h"
 
-namespace knet
-{
+namespace knet { namespace server {
 
 class NetPipe
 {
@@ -52,7 +51,7 @@ class NetPipe
         unsigned int _channel_id;
 };
 
-}
+}}
 
 #endif
 

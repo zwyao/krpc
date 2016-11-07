@@ -2,8 +2,7 @@
 #include "net_processor.h"
 #include "acceptor.h"
 
-namespace knet
-{
+namespace knet { namespace server {
 
 NetManager::~NetManager()
 {
@@ -52,6 +51,6 @@ void NetManager::run()
     ev_loop(_reactor);
 }
 
-}
+}}
 
 

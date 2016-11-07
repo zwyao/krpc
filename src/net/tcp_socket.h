@@ -3,6 +3,7 @@
 
 extern "C"
 {
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,7 @@ extern "C"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
+
 }
 
 #include <string>
@@ -56,7 +58,7 @@ class TcpSocket
         int _fd;
 };
 
-};
+}
 
 #endif
 

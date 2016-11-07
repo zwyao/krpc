@@ -1,11 +1,12 @@
 #include "net_manager.h"
-#include "net_request_processor.h"
+#include "when_receive_packet.h"
 #include "global.h"
 
 using namespace knet;
+using namespace knet::server;
 using namespace util;
 
-class Demo : public NetRequestProcessor
+class Demo : public WhenReceivePacket
 {
     public:
         Demo () { }
@@ -19,8 +20,8 @@ class Demo : public NetRequestProcessor
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            pipe.sendAsynTest(buffer);
-            //pipe.send(buffer);
+            //pipe.sendAsynTest(buffer);
+            pipe.send(buffer);
         }
 };
 

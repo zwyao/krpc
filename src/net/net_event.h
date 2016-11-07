@@ -1,5 +1,5 @@
-#ifndef __EVENT_H__
-#define __EVENT_H__
+#ifndef __NET_EVENT_H__
+#define __NET_EVENT_H__
 
 namespace knet
 {
