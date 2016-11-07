@@ -107,6 +107,8 @@ class NetProcessor : public CallbackObj
                 int _size;
         };
 
+        typedef util::MutexLocker Locker;
+
     public:
         NetProcessor(NetManager* net_manager, WhenReceivePacket* processor);
         virtual ~NetProcessor();
@@ -188,7 +190,8 @@ class NetProcessor : public CallbackObj
                 return sendByQueue(conn_id, mask, channel_id, buffer);;
         }
 
-        inline int sendAsynTest(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        // for test
+        inline int sendAsyn(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             return sendByQueue(conn_id, mask, channel_id, buffer);;
         }
@@ -250,7 +253,7 @@ class NetProcessor : public CallbackObj
             // 至此，buffer被夺走
             util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
             {
-                util::Guard<util::MutexLocker> m(_locker);
+                util::Guard<Locker> m(_locker);
                 _pending_list.push_back(entry);
             }
             evnet::ev_wakeup(_reactor);
@@ -285,7 +288,7 @@ class NetProcessor : public CallbackObj
         // connection的id到NetConnection的映射表
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
 
-        util::MutexLocker _locker;
+        Locker _locker;
         util::BufferList::TList _pending_list;
 
         friend class TimeWheel;

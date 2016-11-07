@@ -36,11 +36,11 @@ class NetPipe
             return ret >= 0 ? 0 : -1;
         }
 
-        int sendAsynTest(util::Buffer& pack)
+        int sendForceAsyn(util::Buffer& pack)
         {
             NetProcessor* processor = detail::g_net_processors[_processor_id];
             assert(processor != 0 && processor->myID() == _processor_id);
-            int ret = processor->sendAsynTest(_conn_id, _mask, _channel_id, pack);
+            int ret = processor->sendAsyn(_conn_id, _mask, _channel_id, pack);
             return ret >= 0 ? 0 : -1;
         }
 

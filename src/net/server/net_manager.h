@@ -2,7 +2,6 @@
 #define __NET_MANAGER_H__
 
 #include "ev.h"
-#include "defines.h"
 
 #include <string.h>
 #include <stdio.h>

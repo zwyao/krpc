@@ -207,7 +207,7 @@ void NetProcessor::sendPendingData()
 {
     util::BufferList::TList pending_data;
     {
-        util::Guard<util::MutexLocker> m(_locker);
+        util::Guard<Locker> m(_locker);
         pending_data.swap(_pending_list);
     }
 
@@ -223,14 +223,16 @@ void NetProcessor::sendPendingData()
         assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
 
         NetConnection* conn = _connections[conn_id];
-        if (unlikely(conn == 0 || conn->myMask() != mask))
+        if (likely(conn != 0 && conn->myMask() == mask))
         {
-            abort();
+            conn->send(entry);
+        }
+        else
+        {
+            fprintf(stderr, "Net processor mask error\n");
             delete entry;
             continue;
         }
-
-        conn->send(entry);
     }
 }
 
