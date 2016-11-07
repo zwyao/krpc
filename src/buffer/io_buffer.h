@@ -24,6 +24,7 @@ class IOBuffer
 
         int read(int fd, int max = -1);
         int write(int fd, bool& null_loop);
+        int write(int fd, BufferList::BufferEntry* entry);
 
         inline void release()
         {
