@@ -30,7 +30,7 @@ void Notifier::start()
     TcpSocket* const sock = new TcpSocket(_fd);
     if (sock)
     {
-        _net_processor->addConnection(new NetConnection(sock, this, NetConnection::SEND_NOTIFY));
+        //_net_processor->addConnection(new NetConnection(sock, this, NetConnection::SEND_NOTIFY));
     }
     else
     {
@@ -47,7 +47,7 @@ int Notifier::notified(int code, void* data)
     uint64_t one = 0;
     ::read(_fd, &one, sizeof(one));
 
-    _net_processor->sendPendingData();
+    //_net_processor->sendPendingData();
     return 0;
 }
 

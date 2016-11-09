@@ -5,25 +5,41 @@
 
 namespace knet { namespace server {
 
-class NetProcessor;
-class Acceptor : public CallbackObj
+class Acceptor
 {
     public:
-        Acceptor(NetProcessor* processor, int port);
+        Acceptor():
+            _cb(0),
+            _port(-1)
+        {
+        }
 
-        virtual ~Acceptor();
+        /*
+         * cb will owned by me
+         */
+        Acceptor(CallbackObj* cb, int port):
+            _cb(cb),
+            _port(port)
+        {
+        }
 
-        int receiveConnection(int code, void* data);
+        virtual ~Acceptor()
+        {
+            if (_cb) delete _cb;
+        }
 
-        bool isReady() const { return (_ready == 1); }
+        int listen();
+
+        void setPort(int port) { _port = port; }
+
+        /*
+         * cb will owned by me
+         */
+        void setAcceptCallback(CallbackObj* cb) { _cb = cb; }
 
     private:
-        void listen();
-
-    private:
-        NetProcessor* const _net_processor;
+        CallbackObj* _cb;
         int _port;
-        int _ready; // 1: ready, 0:not ready
 };
 
 }}

@@ -17,19 +17,22 @@ knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-NetProcessor::NetProcessor(NetManager* net_manager, WhenReceivePacket* processor):
-    _reactor(net_manager->getReactor()),
+NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
+    _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
     _processor(processor),
-    _send_notifier(0),
-    _timer(0),
-    _timer_queue(),
+    _idle_timer(0),
+    _idle_queue(),
     _mask_generator(0),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(global::g_read_io_buffer_limit - 8),
     _conn_empty_list(0)
 {
-    SET_HANDLE(this, &NetProcessor::process);
+    if (_reactor == 0)
+    {
+        fprintf(stderr, "Net driver start error\n");
+        abort();
+    }
 
     assert(_processor != 0);
     assert(MAX_CONNECTION_EACH_MANAGER > 0);
@@ -39,31 +42,35 @@ NetProcessor::NetProcessor(NetManager* net_manager, WhenReceivePacket* processor
         fprintf(stderr, "Too many net processor\n");
         abort();
     }
-
     detail::g_net_processors[_id] = this;
-    setup_timer(net_manager->getIdleTimeout());
-    evnet::ev_set_wakeup(_reactor, doPendingData, this);
+
+    init_empty_conn_list();
+    init_conn_ids();
+
+    setup_timer(idle_timeout);
+    evnet::ev_set_wakeup(_reactor, do_pending, this);
+
+    SET_HANDLE(this, &NetProcessor::process);
+
+    fprintf(stderr, "net processor %d(%d) start\n", _id, _thread_id);
 }
 
 NetProcessor::~NetProcessor()
 {
-    if (_timer)
-        evnet::EvTimer::destroy(_timer);
+    if (_reactor)
+        evnet::ev_destroy(_reactor);
+
+    if (_idle_timer)
+        evnet::EvTimer::destroy(_idle_timer);
 
     for (int i = 0; i < _conn_empty_list_num; ++i)
         delete _conn_empty_list[i];
     delete _conn_empty_list;
 }
 
-void NetProcessor::init()
+void NetProcessor::run()
 {
-    fprintf(stderr, "net processor %d(%d) start\n", _id, _thread_id);
-
-    init_empty_conn_list();
-    init_conn_ids();
-
-    // 必须在最后执行,因为Notifier需要调用NetProcessor
-    setup_notifier();
+    ev_loop(_reactor);
 }
 
 int NetProcessor::process(int code, void* data)
@@ -81,17 +88,17 @@ int NetProcessor::process(int code, void* data)
 
             session._state = NetProcessor::Session::FRAME_HEAD;
             session._mask = input->the_conn->myMask();
-            if (_timer) _timer_queue.add(input->the_conn);
+            if (_idle_timer) _idle_queue.add(input->the_conn);
             break;
 
         case EVENT_NET_READ:
             assert(session._mask == input->the_conn->myMask());
 
-            if (_timer) _timer_queue.update(input->the_conn);
+            if (_idle_timer) _idle_queue.update(input->the_conn);
             if (process_read(session, *(input->the_buffer)) != 0)
             {
                 session.close();
-                if (_timer) _timer_queue.remove(input->the_conn);
+                if (_idle_timer) _idle_queue.remove(input->the_conn);
                 delConnection(input->the_conn);
                 return -1;
             }
@@ -101,7 +108,7 @@ int NetProcessor::process(int code, void* data)
             assert(session._mask == input->the_conn->myMask());
 
             session.close();
-            if (_timer) _timer_queue.remove(input->the_conn);
+            if (_idle_timer) _idle_queue.remove(input->the_conn);
             delConnection(input->the_conn);
             break;
 
@@ -109,7 +116,7 @@ int NetProcessor::process(int code, void* data)
             assert(session._mask == input->the_conn->myMask());
 
             session.close();
-            if (_timer) _timer_queue.remove(input->the_conn);
+            if (_idle_timer) _idle_queue.remove(input->the_conn);
             delConnection(input->the_conn);
             break;
 
@@ -205,11 +212,11 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
     return 0;
 }
 
-void NetProcessor::sendPendingData()
+void NetProcessor::send_pending_data()
 {
     util::BufferList::TList pending_data;
     {
-        util::Guard<Locker> m(_locker);
+        util::Guard<PendingDataLocker> m(_pending_data_locker);
         pending_data.swap(_pending_list);
     }
 
@@ -238,17 +245,17 @@ void NetProcessor::sendPendingData()
     }
 }
 
-void NetProcessor::doPendingData(void* data)
+void NetProcessor::do_pending(void* data)
 {
     NetProcessor* processor = (NetProcessor*)data;
-    processor->sendPendingData();
+    processor->send_pending_data();
 }
 
-void NetProcessor::on_timer(int event, void* data)
+void NetProcessor::on_idle_timer(int event, void* data)
 {
     NetProcessor* processor = (NetProcessor*)data;
     if (event & evnet::EV_TIMER)
-        processor->_timer_queue.check();
+        processor->_idle_queue.check();
 }
 
 void NetProcessor::TimeWheel::check()
@@ -302,27 +309,17 @@ void NetProcessor::setup_timer(int timeout)
 {
     if (timeout > 0)
     {
-        _timer = evnet::EvTimer::create();
-        _timer_queue.init(this, timeout*2);
-        if (_timer == 0)
+        _idle_timer = evnet::EvTimer::create();
+        _idle_queue.init(this, timeout*2);
+        if (_idle_timer == 0)
         {
             fprintf(stderr, "Create timer error\n");
             abort();
         }
 
         // TODO 可以根据timeout大小确定检测周期，而不是固定的0.5秒
-        _timer->set(0.5, 0.5, NetProcessor::on_timer, this);
-        _timer->addTimer(_reactor);
-    }
-}
-
-void NetProcessor::setup_notifier()
-{
-    _send_notifier = new Notifier(this);
-    if (_send_notifier == 0)
-    {
-        fprintf(stderr, "Notifier start error\n");
-        exit(-1);
+        _idle_timer->set(0.5, 0.5, NetProcessor::on_idle_timer, this);
+        _idle_timer->addTimer(_reactor);
     }
 }
 

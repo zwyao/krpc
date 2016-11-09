@@ -7,9 +7,9 @@
 #include "defines.h"
 #include "current_thread.h"
 #include "ev_timer.h"
-#include "notifier.h"
 #include "buffer.h"
 #include "locker.h"
+#include "ev.h"
 
 #include <string.h>
 
@@ -23,7 +23,7 @@ class NetProcessor : public CallbackObj
     private:
         class Session
         {
-            private:
+            public:
                 enum State
                 {
                     IDLE,
@@ -50,14 +50,12 @@ class NetProcessor : public CallbackObj
                     _mask = -1;
                 }
 
-            private:
+            public:
                 State _state;
                 int _conn_id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
                 int _mask;
                 int _frame_size;
                 unsigned int _channel_id;
-
-                friend class NetProcessor;
         };
 
         class TimeWheel
@@ -107,21 +105,19 @@ class NetProcessor : public CallbackObj
                 int _size;
         };
 
-        typedef util::MutexLocker Locker;
+        typedef util::MutexLocker PendingDataLocker;
+        typedef util::SpinLocker  ConnIDLocker;
 
     public:
-        NetProcessor(NetManager* net_manager, WhenReceivePacket* processor);
+        NetProcessor(WhenReceivePacket* processor, int idle_timeout);
         virtual ~NetProcessor();
 
-        void init();
+        void run();
 
         int process(int code, void* data);
-        void sendPendingData();
 
-        inline int myID() const { return _id; }
-
-        // 新连接到来
         //NetConnection will be owned by NetProcessor
+        // thread not safe, but in loop
         inline void newConnection(TcpSocket* sock)
         {
             NetConnection* conn = 0;
@@ -138,9 +134,10 @@ class NetProcessor : public CallbackObj
             addConnection(conn);
         }
 
+        // thread not safe, but in loop
         inline int addConnection(NetConnection* conn)
         {
-            const int id = getConnID();
+            const int id = get_connid();
             if (likely(id >= 0))
             {
                 assert(_connections[id] == 0);
@@ -156,6 +153,7 @@ class NetProcessor : public CallbackObj
             }
         }
 
+        // thread not safe, but in loop
         inline void delConnection(NetConnection* conn)
         {
             // 在close之前获取id
@@ -185,28 +183,31 @@ class NetProcessor : public CallbackObj
         inline int send(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             if (_thread_id == util::CurrentThread::getTid())
-                return sendByMe(conn_id, mask, channel_id, buffer);
+                return send_by_me(conn_id, mask, channel_id, buffer);
             else
-                return sendByQueue(conn_id, mask, channel_id, buffer);;
+                return send_by_queue(conn_id, mask, channel_id, buffer);;
         }
 
         // for test
         inline int sendAsyn(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
-            return sendByQueue(conn_id, mask, channel_id, buffer);;
+            return send_by_queue(conn_id, mask, channel_id, buffer);;
         }
+
+        inline int myID() const { return _id; }
 
     private:
         void init_empty_conn_list();
         void init_conn_ids();
-        void setup_timer(int timeout);
-        void setup_notifier();
 
         int process_read(NetProcessor::Session& session, util::Buffer& buffer);
         int check_data(NetProcessor::Session& session, util::Buffer& buffer);
+        void send_pending_data();
+        void setup_timer(int timeout);
 
-        inline int getConnID()
+        inline int get_connid()
         {
+            util::Guard<ConnIDLocker> m(_id_locker);
             if (likely(_conn_id_num > 0))
                 return _conn_ids[--_conn_id_num];
             return -1;
@@ -221,7 +222,7 @@ class NetProcessor : public CallbackObj
             session.close();
         }
 
-        inline int sendByMe(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_me(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             // 包含负值的检查
             assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
@@ -241,7 +242,7 @@ class NetProcessor : public CallbackObj
             return conn->send(entry);
         }
 
-        inline int sendByQueue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             char* ptr = buffer.getBuffer();
             assert(buffer.consumer() - ptr == 8);
@@ -253,7 +254,7 @@ class NetProcessor : public CallbackObj
             // 至此，buffer被夺走
             util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
             {
-                util::Guard<Locker> m(_locker);
+                util::Guard<PendingDataLocker> m(_pending_data_locker);
                 _pending_list.push_back(entry);
             }
             evnet::ev_wakeup(_reactor);
@@ -263,15 +264,14 @@ class NetProcessor : public CallbackObj
         }
 
     private:
-        static void on_timer(int event, void* data);
-        static void doPendingData(void* data);
+        static void on_idle_timer(int event, void* data);
+        static void do_pending(void* data);
 
     private:
         evnet::EvLoop* const _reactor;
         WhenReceivePacket* const _processor;
-        Notifier* _send_notifier;
-        evnet::EvTimer* _timer;
-        TimeWheel _timer_queue;
+        evnet::EvTimer* _idle_timer;
+        TimeWheel _idle_queue;
         util::IDCreatorUnsafe _mask_generator;
 
         const pid_t _thread_id;
@@ -288,7 +288,8 @@ class NetProcessor : public CallbackObj
         // connection的id到NetConnection的映射表
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
 
-        Locker _locker;
+        ConnIDLocker _id_locker;
+        PendingDataLocker _pending_data_locker;
         util::BufferList::TList _pending_list;
 
         friend class TimeWheel;

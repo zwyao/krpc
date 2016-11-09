@@ -1,32 +1,19 @@
 #include "acceptor.h"
 #include "tcp_socket.h"
-#include "net_processor.h"
-#include "net_connection.h"
+#include "net_event.h"
 #include "defines.h"
 
-#include <assert.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 namespace knet { namespace server {
 
-Acceptor::Acceptor(NetProcessor* processor, int port):
-    _net_processor(processor),
-    _port(port),
-    _ready(0)
+int Acceptor::listen()
 {
-    assert(_net_processor != 0);
-
-    SET_HANDLE(this, &Acceptor::receiveConnection);
-    this->listen();
-}
-
-Acceptor::~Acceptor()
-{
-}
-
-void Acceptor::listen()
-{
-    if (_ready == 1) return;
+    if (_port < 0 || _cb == 0)
+    {
+        fprintf(stderr, "Acceptor need port/callback\n");
+        return -1;
+    }
 
     TcpSocket* const sock = new TcpSocket();
     int ret = sock->listen(_port);
@@ -34,25 +21,10 @@ void Acceptor::listen()
     {
         fprintf(stderr, "Unable to bind to port: %d\n", _port);
         delete sock;
-        return;
+        return -1;
     }
 
-    _net_processor->addConnection(new NetConnection(sock, this, NetConnection::LISTEN));
-    _ready = 1;
-}
-
-int Acceptor::receiveConnection(int code, void* data)
-{
-    switch (code)
-    {
-        case EVENT_NEW_CONNECTION:
-            _net_processor->newConnection((TcpSocket*)data);
-            break;
-        case EVENT_NET_EOF:
-            break;
-        default:
-            assert(0);
-    }
+    _cb->handleEvent(knet::EVENT_LISTEN, (void*)sock);
 
     return 0;
 }
