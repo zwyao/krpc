@@ -24,9 +24,8 @@ int Acceptor::listen()
         return -1;
     }
 
-    _cb->handleEvent(knet::EVENT_LISTEN, (void*)sock);
-
-    return 0;
+    ret = _cb->handleEvent(knet::EVENT_LISTEN, (void*)sock);
+    return ret == 0 ? 0 : -1;
 }
 
 }}

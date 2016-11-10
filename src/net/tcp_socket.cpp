@@ -120,6 +120,8 @@ int TcpSocket::connect(const struct sockaddr_in* addr, bool nonblocking)
 
     int buffer_size = 65535;
     ::setsockopt(_fd, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
+
+    buffer_size = buffer_size * 2;
     ::setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
 
     if (nonblocking)

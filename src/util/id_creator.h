@@ -1,9 +1,7 @@
 #ifndef __ID_CREATOR_H__
 #define __ID_CREATOR_H__
 
-#include "locker.h"
-
-#include <assert.h>
+#include "atomic.h"
 
 namespace util
 {
@@ -11,46 +9,23 @@ namespace util
 class IDCreator
 {
     public:
-        explicit IDCreator(int init_id = 0):
-            _id(init_id),
-            _locker()
+        explicit IDCreator(int init_id = -1)
         {
-            assert(_id >= 0);
+            atomic_set(&_id, init_id);
         }
 
         ~IDCreator() { }
 
         int nextID()
         {
-            Guard<SpinLocker> m(_locker);
-            return _id++;
+            return atomic_inc_return(&_id);
         }
 
     private:
-        int _id;
-        SpinLocker _locker;
+        atomic_t _id;
 };
 
-class IDCreatorUnsafe
-{
-    public:
-        explicit IDCreatorUnsafe(int init_id = 0):
-            _id(init_id)
-        {
-            assert(_id >= 0);
-        }
-
-        ~IDCreatorUnsafe() { }
-
-        int nextID()
-        {
-            return _id++;
-        }
-
-    private:
-        int _id;
-};
-};
+}
 
 #endif
 

@@ -19,10 +19,11 @@ knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
     _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
-    _processor(processor),
     _idle_timer(0),
+    _processor(processor),
     _idle_queue(),
-    _mask_generator(0),
+    _mask_generator(-1),
+    _conn_id_gen(),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(global::g_read_io_buffer_limit - 8),
@@ -44,8 +45,8 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
     }
     detail::g_net_processors[_id] = this;
 
-    init_empty_conn_list();
-    init_conn_ids();
+    init_conn_list();
+    init_session();
 
     setup_timer(idle_timeout);
     evnet::ev_set_wakeup(_reactor, do_pending, this);
@@ -118,6 +119,21 @@ int NetProcessor::process(int code, void* data)
             session.close();
             if (_idle_timer) _idle_queue.remove(input->the_conn);
             delConnection(input->the_conn);
+            break;
+
+        case EVENT_CONNECTING:
+            assert(session._state == NetProcessor::Session::IDLE);
+            assert(session._mask == -1);
+
+            session._state = NetProcessor::Session::CONNECTING;
+            session._mask = input->the_conn->myMask();
+            break;
+
+        case EVENT_CONNECTED:
+            assert(session._state == NetProcessor::Session::CONNECTING);
+            assert(session._mask == input->the_conn->myMask());
+
+            session._state = NetProcessor::Session::FRAME_HEAD;
             break;
 
         default:
@@ -216,8 +232,8 @@ void NetProcessor::send_pending_data()
 {
     util::BufferList::TList pending_data;
     {
-        util::Guard<PendingDataLocker> m(_pending_data_locker);
-        pending_data.swap(_pending_list);
+        util::Guard<PendingLocker> m(_pending_locker);
+        pending_data.swap(_pending_data_list);
     }
 
     while (!pending_data.empty())
@@ -238,10 +254,30 @@ void NetProcessor::send_pending_data()
         }
         else
         {
-            fprintf(stderr, "Net processor mask error\n");
+            fprintf(stderr, "Net processor mask error?????????????????:%d:%d(%d:%d)\n",
+                    conn->myID(),
+                    conn->myMask(),
+                    conn_id,
+                    mask);
             delete entry;
             continue;
         }
+    }
+}
+
+void NetProcessor::process_pending_connection()
+{
+    PendingConntionList pending_conn;
+    {
+        util::Guard<PendingLocker> m(_pending_locker);
+        pending_conn.swap(_pending_conn_list);
+    }
+
+    while (!pending_conn.empty())
+    {
+        NetConnection* conn = pending_conn.front();
+        pending_conn.pop_front();
+        attachConnection(conn, evnet::EV_IO_WRITE);
     }
 }
 
@@ -249,6 +285,7 @@ void NetProcessor::do_pending(void* data)
 {
     NetProcessor* processor = (NetProcessor*)data;
     processor->send_pending_data();
+    processor->process_pending_connection();
 }
 
 void NetProcessor::on_idle_timer(int event, void* data)
@@ -275,7 +312,7 @@ void NetProcessor::TimeWheel::check()
     }
 }
 
-void NetProcessor::init_empty_conn_list()
+void NetProcessor::init_conn_list()
 {
     int num = MAX_CONNECTION_EACH_MANAGER / 100;
     if (num == 0)
@@ -290,19 +327,14 @@ void NetProcessor::init_empty_conn_list()
 
     _conn_empty_list_num = num;
     _conn_empty_list_size = num;
-}
-
-void NetProcessor::init_conn_ids()
-{
-    int id = MAX_CONNECTION_EACH_MANAGER;
-    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
-    {
-        _conn_ids[i] = --id;
-        _session_set[i]._conn_id = i;
-    }
-    _conn_id_num = MAX_CONNECTION_EACH_MANAGER;
 
     memset(_connections, 0, sizeof(_connections));
+}
+
+void NetProcessor::init_session()
+{
+    for (int i = 0; i < MAX_CONNECTION_EACH_MANAGER; ++i)
+        _session_set[i]._conn_id = i;
 }
 
 void NetProcessor::setup_timer(int timeout)

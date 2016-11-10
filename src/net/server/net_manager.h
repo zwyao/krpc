@@ -29,17 +29,11 @@ namespace knet { namespace server {
 class WhenReceivePacket;
 class NetProcessor;
 class Acceptor;
+class NetConnector;
 class NetManager
 {
     public:
-        NetManager(WhenReceivePacket* processor, int idle_timeout = 0):
-            _acceptor(0),
-            _net_processor(0),
-            _request_processor(processor),
-            _idle_timeout(idle_timeout)
-        {
-        }
-
+        NetManager(WhenReceivePacket* processor, int idle_timeout = 0);
         ~NetManager();
 
         /*
@@ -59,6 +53,7 @@ class NetManager
     private:
         Acceptor* _acceptor;
         NetProcessor* _net_processor;
+        NetConnector* _connector;
         WhenReceivePacket* const _request_processor;
         // 空闲链接的timeout，不是收发数据的timeout
         // 秒级

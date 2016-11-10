@@ -12,6 +12,9 @@
 
 namespace knet { namespace server {
 
+/*
+ * connection 完全由 NetProcessor 管理
+ */
 class NetConnection
 {
     public:
@@ -19,7 +22,7 @@ class NetConnection
         {
             LISTEN = 1,
             NORMAL,
-            SEND_NOTIFY,
+            CONNECTING,
         };
 
     public:
@@ -28,10 +31,10 @@ class NetConnection
             _io(evnet::EvIo::create()),
             _sock(0),
             _cb(0),
-            _state(NetConnection::NORMAL),
             _id(-1),
             _mask(-1),
-            _net_code(EVENT_NONE)
+            _state(NetConnection::NORMAL),
+            _error(NetConnection::NET_NONE)
         {
             assert(_io != 0);
         }
@@ -43,10 +46,10 @@ class NetConnection
             _io(evnet::EvIo::create()),
             _sock(sock),
             _cb(cb),
-            _state(state),
             _id(-1),
             _mask(-1),
-            _net_code(EVENT_NONE)
+            _state(state),
+            _error(NetConnection::NET_NONE)
         {
             assert(sock && cb && _io);
         }
@@ -66,32 +69,47 @@ class NetConnection
         void handleErrorEvent();
         void handleTimeoutEvent();
 
+        inline void init(knet::TcpSocket* sock,
+                knet::CallbackObj* cb,
+                int id,
+                int mask,
+                NetConnection::State state)
+        {
+            _sock = sock;
+            _cb   = cb;
+            _id   = id;
+            _mask = mask;
+            _state = state;
+            _error = NetConnection::NET_NONE;
+        }
+
         // 加入事件循环
-        inline void join(evnet::EvLoop* reactor,
-                const int id,
-                const int mask)
+        inline void join(evnet::EvLoop* reactor, int event)
         {
             _reactor = reactor;
-            _id = id;
-            _mask = mask;
-
-            assert(_io != 0);
-            _io->setEvent(_sock->fd(), evnet::EV_IO_READ, processor, this);
+            _io->setEvent(_sock->fd(), event, processor, this);
             _io->addEvent(_reactor, evnet::EV_HIGH_PRI);
 
-            // 新连接到来
             if (likely(_state == NetConnection::NORMAL))
             {
                 Input input(this, 0);
                 _cb->handleEvent(EVENT_NEW_CONNECTION, (void*)&input);
+            }
+            else if (_state == NetConnection::CONNECTING)
+            {
+                Input input(this, 0);
+                _cb->handleEvent(EVENT_CONNECTING, (void*)&input);
             }
         }
 
         inline void close()
         {
             if (_sock == 0) return;
-            if (_io) _io->delEvent();
-
+            if (_reactor && _io)
+            {
+                _io->delEvent();
+                _reactor = 0;
+            }
             //防止竞态条件: os可能重用正在关闭的fd
             knet::TcpSocket* const sock = _sock;
             _sock = 0;
@@ -111,9 +129,10 @@ class NetConnection
         inline int myID() const { return _id; }
         inline int myMask() const { return _mask; }
 
-        inline void setNetCode(EventCode code) { _net_code = code; }
         inline void setSocket(knet::TcpSocket* sock) { _sock = sock; }
         inline void setCallbackObj(knet::CallbackObj* cb) { _cb = cb; }
+        inline void setID(int id) { _id = id; }
+        inline void setMask(int mask) { _mask = mask; }
 
         /*
          * 把buffer添加到发送队列
@@ -158,10 +177,19 @@ class NetConnection
     private:
         void recv_connection();
         void recv_data();
-        void recv_notify();
+        void send_data();
+        void connecting();
 
     private:
         static void processor(int event, void* data);
+
+    private:
+        enum Error
+        {
+            NET_NONE = 1,
+            NET_ERROR,
+            NET_EOF,
+        };
 
     private:
         evnet::EvLoop* _reactor;
@@ -170,10 +198,11 @@ class NetConnection
         //own _sock
         knet::TcpSocket* _sock;
         knet::CallbackObj* _cb;
-        NetConnection::State _state;
         int _id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
         int _mask;
-        int _net_code;
+
+        NetConnection::State _state;
+        NetConnection::Error _error;
 
         util::IOBuffer _in_buffer;
         util::IOBuffer _out_buffer;

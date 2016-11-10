@@ -3,12 +3,12 @@
 
 #include "net_connection.h"
 #include "id_creator.h"
+#include "conn_id_generator.h"
 #include "callback_object.h"
 #include "defines.h"
 #include "current_thread.h"
-#include "ev_timer.h"
-#include "buffer.h"
 #include "locker.h"
+#include "ev_timer.h"
 #include "ev.h"
 
 #include <string.h>
@@ -27,6 +27,7 @@ class NetProcessor : public CallbackObj
                 enum State
                 {
                     IDLE,
+                    CONNECTING,
                     FRAME_HEAD,
                     DATA,
                     INVALID,
@@ -105,8 +106,8 @@ class NetProcessor : public CallbackObj
                 int _size;
         };
 
-        typedef util::MutexLocker PendingDataLocker;
-        typedef util::SpinLocker  ConnIDLocker;
+    private:
+        typedef util::MutexLocker PendingLocker;
 
     public:
         NetProcessor(WhenReceivePacket* processor, int idle_timeout);
@@ -116,61 +117,94 @@ class NetProcessor : public CallbackObj
 
         int process(int code, void* data);
 
-        //NetConnection will be owned by NetProcessor
-        // thread not safe, but in loop
-        inline void newConnection(TcpSocket* sock)
+        // 主动发起链接
+        inline int newConnection(TcpSocket* sock)
         {
-            NetConnection* conn = 0;
-            if (likely(_conn_empty_list_num > 0))
-                conn = _conn_empty_list[--_conn_empty_list_num];
-            else
-                conn = new NetConnection();
+            NetConnection* const conn =
+                new (std::nothrow) NetConnection(sock, this, NetConnection::CONNECTING);
+            if (conn == 0)
+            {
+                delete sock;
+                return -1;
+            }
 
-            assert(conn->myID() == -1);
-
-            conn->setSocket(sock);
-            conn->setCallbackObj(this);
-
-            addConnection(conn);
-        }
-
-        // thread not safe, but in loop
-        inline int addConnection(NetConnection* conn)
-        {
-            const int id = get_connid();
+            const int id = _conn_id_gen.get();
             if (likely(id >= 0))
             {
-                assert(_connections[id] == 0);
+                conn->setID(id);
+                conn->setMask(_mask_generator.nextID());
 
-                conn->join(_reactor, id, _mask_generator.nextID());
-                _connections[id] = conn;
+                {
+                    util::Guard<PendingLocker> m(_pending_locker);
+                    _pending_conn_list.push_back(conn);
+                }
+
+                evnet::ev_wakeup(_reactor);
+
                 return 0;
             }
             else
             {
-                delConnection(conn);
-                return -1;
+                delete conn;
             }
+        }
+
+        // thread not safe, but in loop
+        inline void addDynamicConnection(TcpSocket* sock)
+        {
+            NetConnection* const conn = acquireConnection();
+            if (unlikely(conn == 0))
+            {
+                delete sock;
+                return;
+            }
+
+            assert(conn->myID() == -1);
+            assert(conn->myMask() == -1);
+
+            const int id = _conn_id_gen.get();
+            if (likely(id >= 0))
+            {
+                conn->init(sock,
+                        this,
+                        id,
+                        _mask_generator.nextID(),
+                        NetConnection::NORMAL);
+                attachConnection(conn, evnet::EV_IO_READ);
+            }
+            else
+            {
+                releaseConnection(conn);
+                delete sock;
+            }
+        }
+
+        // 外部传进来的conn
+        // thread not safe, but in loop
+        inline int addStaticConnection(NetConnection* conn, int event = evnet::EV_IO_READ)
+        {
+            const int id = _conn_id_gen.get();
+            if (likely(id >= 0))
+            {
+                conn->setID(id);
+                conn->setMask(_mask_generator.nextID());
+                attachConnection(conn, event);
+                return 0;
+            }
+            return -1;
         }
 
         // thread not safe, but in loop
         inline void delConnection(NetConnection* conn)
         {
+            // id >= 0,说明是调用的add接口
             // 在close之前获取id
-            int id = conn->myID();
+            const int id = conn->myID();
             if (likely(id >= 0))
             {
-                conn->close();
-                assert(conn == _connections[id]);
-
-                _connections[id] = 0;
-                // 回收id
-                _conn_ids[_conn_id_num++] = id;
-
-                if (_conn_empty_list_num < _conn_empty_list_size)
-                    _conn_empty_list[_conn_empty_list_num++] = conn;
-                else
-                    delete conn;
+                detachConnection(conn);
+                _conn_id_gen.put(id);
+                releaseConnection(conn);
             }
             else
             {
@@ -197,20 +231,47 @@ class NetProcessor : public CallbackObj
         inline int myID() const { return _id; }
 
     private:
-        void init_empty_conn_list();
-        void init_conn_ids();
+        void init_conn_list();
+        void init_session();
 
         int process_read(NetProcessor::Session& session, util::Buffer& buffer);
         int check_data(NetProcessor::Session& session, util::Buffer& buffer);
         void send_pending_data();
+        void process_pending_connection();
         void setup_timer(int timeout);
 
-        inline int get_connid()
+        inline NetConnection* acquireConnection()
         {
-            util::Guard<ConnIDLocker> m(_id_locker);
-            if (likely(_conn_id_num > 0))
-                return _conn_ids[--_conn_id_num];
-            return -1;
+            NetConnection* conn = 0;
+            if (likely(_conn_empty_list_num > 0))
+                conn = _conn_empty_list[--_conn_empty_list_num];
+            else
+                conn = new (std::nothrow) NetConnection();
+            return conn;
+        }
+
+        inline void releaseConnection(NetConnection* conn)
+        {
+            if (_conn_empty_list_num < _conn_empty_list_size)
+                _conn_empty_list[_conn_empty_list_num++] = conn;
+            else
+                delete conn;
+        }
+
+        inline void attachConnection(NetConnection* conn, int event)
+        {
+            int id = conn->myID();
+            assert(_connections[id] == 0);
+            _connections[id] = conn;
+            conn->join(_reactor, event);
+        }
+
+        inline void detachConnection(NetConnection* conn)
+        {
+            int id = conn->myID();
+            assert(conn == _connections[id]);
+            _connections[id] = 0;
+            conn->close();
         }
 
         inline void close_session(NetConnection* conn)
@@ -254,11 +315,11 @@ class NetProcessor : public CallbackObj
             // 至此，buffer被夺走
             util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
             {
-                util::Guard<PendingDataLocker> m(_pending_data_locker);
-                _pending_list.push_back(entry);
+                util::Guard<PendingLocker> m(_pending_locker);
+                _pending_data_list.push_back(entry);
             }
+
             evnet::ev_wakeup(_reactor);
-            //_send_notifier->notify();
 
             return 0;
         }
@@ -269,28 +330,29 @@ class NetProcessor : public CallbackObj
 
     private:
         evnet::EvLoop* const _reactor;
-        WhenReceivePacket* const _processor;
         evnet::EvTimer* _idle_timer;
+        WhenReceivePacket* const _processor;
         TimeWheel _idle_queue;
-        util::IDCreatorUnsafe _mask_generator;
+        util::IDCreator _mask_generator;
+        ConnIdGenerator _conn_id_gen;
 
         const pid_t _thread_id;
         const int _id;
         const int _frame_limit;
+
         NetConnection** _conn_empty_list;
         int _conn_empty_list_num;
         int _conn_empty_list_size;
 
-        // connection的id,约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
-        int _conn_ids[MAX_CONNECTION_EACH_MANAGER];
-        int _conn_id_num;
-        NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
         // connection的id到NetConnection的映射表
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
+        NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
 
-        ConnIDLocker _id_locker;
-        PendingDataLocker _pending_data_locker;
-        util::BufferList::TList _pending_list;
+        PendingLocker _pending_locker;
+        util::BufferList::TList _pending_data_list;
+
+        typedef util::List<NetConnection, &NetConnection::list_node> PendingConntionList;
+        PendingConntionList _pending_conn_list;
 
         friend class TimeWheel;
 };

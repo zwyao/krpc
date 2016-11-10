@@ -7,6 +7,8 @@ namespace knet
 enum EventCode {
     EVENT_NONE = 1,
     EVENT_LISTEN,
+    EVENT_CONNECTING,
+    EVENT_CONNECTED,
     EVENT_NEW_CONNECTION,
     EVENT_NET_READ,
     EVENT_NET_WROTE,

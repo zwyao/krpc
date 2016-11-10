@@ -238,7 +238,7 @@ char* FixedSizeAllocator::allocate()
             chunk = chunk->_next;
         }
 
-        fprintf(stderr, "out of memory in pool: %d\n", avail);
+        //fprintf(stderr, "out of memory in pool: %d\n", avail);
         return 0;
     }
 

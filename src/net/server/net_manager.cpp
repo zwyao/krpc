@@ -1,9 +1,20 @@
 #include "net_manager.h"
 #include "net_processor.h"
+#include "net_connector.h"
 #include "acceptor.h"
 #include "accept_adaptor.h"
 
 namespace knet { namespace server {
+
+NetManager::NetManager(WhenReceivePacket* processor, int idle_timeout):
+    _acceptor(0),
+    _net_processor(0),
+    _connector(new NetConnector()),
+    _request_processor(processor),
+    _idle_timeout(idle_timeout)
+{
+    assert(_connector);
+}
 
 NetManager::~NetManager()
 {
