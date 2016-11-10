@@ -2,7 +2,8 @@
 #include "net_processor.h"
 #include "net_connection.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 int AcceptAdaptor::start(int code, void* data)
 {
@@ -35,5 +36,5 @@ int AcceptAdaptor::when(int code, void* data)
     return 0;
 }
 
-}}
+}
 

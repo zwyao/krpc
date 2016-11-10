@@ -7,13 +7,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 namespace detail 
 {
 
 util::IDCreator g_processor_id_creator(0);
-knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
+knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
@@ -355,5 +356,5 @@ void NetProcessor::setup_timer(int timeout)
     }
 }
 
-}}
+}
 

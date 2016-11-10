@@ -4,7 +4,8 @@
 #include "acceptor.h"
 #include "accept_adaptor.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 NetManager::NetManager(WhenReceivePacket* processor, int idle_timeout):
     _acceptor(0),
@@ -75,6 +76,5 @@ NetPipe getPipe(const ServerLocation& location)
 }
 */
 
-}}
-
+}
 

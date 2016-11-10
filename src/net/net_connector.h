@@ -3,7 +3,8 @@
 
 #include "tcp_socket.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 class NetConnector
 {
@@ -14,7 +15,7 @@ class NetConnector
         TcpSocket* connect(const ServerLocation& location);
 };
 
-}}
+}
 
 #endif
 

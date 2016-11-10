@@ -5,7 +5,8 @@
 
 #include <stdio.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 int Acceptor::listen()
 {
@@ -28,5 +29,5 @@ int Acceptor::listen()
     return ret == 0 ? 0 : -1;
 }
 
-}}
+}
 

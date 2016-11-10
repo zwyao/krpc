@@ -13,7 +13,8 @@
 
 #include <string.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 class WhenReceivePacket;
 class NetManager;
@@ -362,11 +363,11 @@ namespace detail
 {
 
 extern util::IDCreator g_processor_id_creator;
-extern knet::server::NetProcessor* g_net_processors[NET_MANAGER_NUM];
+extern knet::NetProcessor* g_net_processors[NET_MANAGER_NUM];
 
 }
 
-}}
+}
 
 #endif
 

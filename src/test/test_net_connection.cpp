@@ -3,7 +3,6 @@
 #include "global.h"
 
 using namespace knet;
-using namespace knet::server;
 using namespace util;
 
 class Demo : public WhenReceivePacket
@@ -20,8 +19,8 @@ class Demo : public WhenReceivePacket
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            //pipe.sendForceAsyn(buffer);
-            pipe.send(buffer);
+            pipe.sendForceAsyn(buffer);
+            //pipe.send(buffer);
         }
 };
 

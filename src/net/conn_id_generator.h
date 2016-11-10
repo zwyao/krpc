@@ -4,7 +4,8 @@
 #include "locker.h"
 #include "defines.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 class ConnIdGenerator
 {
@@ -39,7 +40,7 @@ class ConnIdGenerator
         ConnIDLocker _id_locker;
 };
 
-}}
+}
 
 #endif
 

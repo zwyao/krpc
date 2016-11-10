@@ -7,7 +7,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 class NetProcessor;
 class Notifier : public CallbackObj
@@ -33,7 +34,7 @@ class Notifier : public CallbackObj
         util::IOBuffer _out_buffer;
 };
 
-}}
+}
 
 #endif
 

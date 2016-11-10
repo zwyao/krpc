@@ -3,7 +3,8 @@
 
 #include "callback_object.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 class Acceptor
 {
@@ -42,7 +43,7 @@ class Acceptor
         int _port;
 };
 
-}}
+}
 
 #endif
 

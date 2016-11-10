@@ -1,6 +1,7 @@
 #include "conn_id_generator.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 ConnIdGenerator::ConnIdGenerator()
 {
@@ -15,5 +16,5 @@ void ConnIdGenerator::init_conn_ids()
     _conn_id_num = MAX_CONNECTION_EACH_MANAGER;
 }
 
-}}
+}
 

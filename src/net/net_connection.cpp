@@ -2,7 +2,8 @@
 
 #include <errno.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 void NetConnection::handleReadEvent()
 {
@@ -162,5 +163,5 @@ void NetConnection::processor(int event, void* data)
     }
 }
 
-}}
+}
 

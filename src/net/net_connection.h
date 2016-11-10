@@ -10,7 +10,8 @@
 #include "ev.h"
 #include "ev_io.h"
 
-namespace knet { namespace server {
+namespace knet
+{
 
 /*
  * connection 完全由 NetProcessor 管理
@@ -211,7 +212,7 @@ class NetConnection
         util::ListOp::ListNode list_node;
 };
 
-}}
+}
 
 #endif
 

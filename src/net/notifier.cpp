@@ -5,7 +5,8 @@
 #include <sys/eventfd.h>
 #include <stdlib.h>
 
-namespace knet { namespace server {
+namespace knet
+{
 
 Notifier::Notifier(NetProcessor* processor):
     _net_processor(processor)
@@ -51,5 +52,5 @@ int Notifier::notified(int code, void* data)
     return 0;
 }
 
-}}
+}
 
