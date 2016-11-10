@@ -58,6 +58,23 @@ void NetManager::run()
     _net_processor->run();
 }
 
+/*
+NetPipe getPipe(const ServerLocation& location)
+{
+    NetPipe pipe;
+    TcpSocket* const sock = _connector->connect(location);
+    if (sock)
+    {
+        int ret = _net_processor->newConnection(sock);
+        if (ret == 0)
+        {
+            NetPipe pipe(_net_processor->myID(),
+                    );
+        }
+    }
+}
+*/
+
 }}
 
 

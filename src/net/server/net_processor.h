@@ -146,6 +146,7 @@ class NetProcessor : public CallbackObj
             else
             {
                 delete conn;
+                return -1;
             }
         }
 

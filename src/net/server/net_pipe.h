@@ -9,6 +9,14 @@ namespace knet { namespace server {
 class NetPipe
 {
     public:
+        NetPipe():
+            _processor_id(-1),
+            _conn_id(-1),
+            _mask(-1),
+            _channel_id(-1)
+        {
+        }
+
         NetPipe(int processor_id,
                 int conn_id,
                 int mask,

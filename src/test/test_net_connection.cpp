@@ -20,8 +20,8 @@ class Demo : public WhenReceivePacket
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            pipe.sendForceAsyn(buffer);
-            //pipe.send(buffer);
+            //pipe.sendForceAsyn(buffer);
+            pipe.send(buffer);
         }
 };
 
