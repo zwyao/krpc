@@ -10,7 +10,7 @@ using namespace knet;
 int g_channel_id_send = 0;
 int g_channel_id_recv = 0;
 int g_channel_id = 0;
-int g_count = 5000000;
+int g_count = 50000000;
 void echo(int fd, const char* str)
 {
     char outbuffer[1024];
@@ -50,7 +50,7 @@ void* send(void* arg)
 
     char buffer[1024];
     char* p = buffer + 8;
-    strcpy(p, "hello world!");
+    strcpy(p, "hello world!12345678");
     int len = strlen(p)+1;
     *((unsigned int*)buffer) = htonl(len);
     len += 8;
@@ -98,14 +98,14 @@ void* recv(void* arg)
             p += ret;
 
             char* data = buffer;
-            while (have >= 21)
+            while (have >= 29)
             {
-                assert(ntohl(*((unsigned int*)data)) == 13);
+                assert(ntohl(*((unsigned int*)data)) == 21);
                 assert(ntohl(*((unsigned int*)(data+4))) == g_channel_id_recv);
-                assert(strcmp(data+8, "hello world!") == 0);
+                assert(strcmp(data+8, "hello world!12345678") == 0);
 
-                data += 21;
-                have -= 21;
+                data += 29;
+                have -= 29;
 
                 ++g_channel_id_recv;
                 ++i;

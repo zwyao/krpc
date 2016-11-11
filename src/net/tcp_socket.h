@@ -46,7 +46,8 @@ class TcpSocket
         void setNoDelay(bool on)
         {
             int flag = (on ? 1 : 0);
-            ::setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+            if (::setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag)) < 0)
+                fprintf(stderr, "Set TCP_NODELAY error\n");
         }
 
         void setLinger(bool on, int linger)

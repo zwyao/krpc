@@ -135,6 +135,14 @@ class NetConnection
         inline void setID(int id) { _id = id; }
         inline void setMask(int mask) { _mask = mask; }
 
+        inline int send(util::Buffer& buffer)
+        {
+            _out_buffer.append(buffer);
+            if ((_io->events() & evnet::EV_IO_WRITE) == 0)
+                _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
+            return 0;
+        }
+
         /*
          * 把buffer添加到发送队列
          * @param[in] buffer 的内存会被夺走
@@ -157,7 +165,7 @@ class NetConnection
             }
             */
             _out_buffer.append(entry);
-            if (_out_buffer.size() == 1)
+            if ((_io->events() & evnet::EV_IO_WRITE) == 0)
                 _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
             return 0;
         }

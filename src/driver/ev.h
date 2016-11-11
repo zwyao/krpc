@@ -6,6 +6,7 @@ namespace evnet
 
 typedef void (*EvFun) (int event, void* data);
 typedef void (*WakeupFun) (void* data);
+typedef void (*LoopEndFun) (void* data);
 
 //all flags
 enum
@@ -42,6 +43,12 @@ enum
 };
 
 typedef double ev_tstamp;
+
+struct LoopEnd
+{
+    LoopEndFun f;
+    void* data;
+};
 
 struct EvWakeup
 {
@@ -87,9 +94,16 @@ struct EvLoop
     EvCore* ev_dummy;
     Reactor* reactor;
     EvWakeup wakeup;
+    LoopEnd loop_end;
 };
 
 EvLoop* ev_init(unsigned int flags);
+
+inline void ev_set_loopend(EvLoop* loop, LoopEndFun f, void* data)
+{
+    loop->loop_end.f = f;
+    loop->loop_end.data = data;
+}
 
 inline void ev_set_wakeup(EvLoop* loop, WakeupFun f, void* data)
 {

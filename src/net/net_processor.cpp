@@ -50,7 +50,7 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
     init_session();
 
     setup_timer(idle_timeout);
-    evnet::ev_set_wakeup(_reactor, do_pending, this);
+    evnet::ev_set_loopend(_reactor, do_pending, this);
 
     SET_HANDLE(this, &NetProcessor::process);
 
@@ -255,11 +255,6 @@ void NetProcessor::send_pending_data()
         }
         else
         {
-            fprintf(stderr, "Net processor mask error?????????????????:%d:%d(%d:%d)\n",
-                    conn->myID(),
-                    conn->myMask(),
-                    conn_id,
-                    mask);
             delete entry;
             continue;
         }
@@ -286,7 +281,7 @@ void NetProcessor::do_pending(void* data)
 {
     NetProcessor* processor = (NetProcessor*)data;
     processor->send_pending_data();
-    processor->process_pending_connection();
+    //processor->process_pending_connection();
 }
 
 void NetProcessor::on_idle_timer(int event, void* data)

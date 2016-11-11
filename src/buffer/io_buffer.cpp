@@ -8,7 +8,7 @@
 namespace global
 {
 
-int g_read_io_buffer_limit = 8192;
+int g_read_io_buffer_limit = 1024000;
 
 void small_buffer_pool_init(int block_size, int block_count)
 {
@@ -43,11 +43,38 @@ namespace
 
 inline int read_data(int fd, int max_read, util::Buffer& buffer)
 {
-    char* ptr = buffer.producer();
-    int nread = ::read(fd, ptr, max_read);
-    if (nread > 0)
+    char extrabuf[65536];
+    struct iovec read_vec[2];
+    read_vec[0].iov_base = buffer.producer();
+    read_vec[0].iov_len = max_read;
+    read_vec[1].iov_base = extrabuf;
+    read_vec[1].iov_len = sizeof(extrabuf);
+
+    const int iovcnt = (max_read < (int)sizeof(extrabuf)) ? 2 : 1;
+    const int nread = ::readv(fd, read_vec, iovcnt);
+    if (nread < 0)
+    {
+        return (errno > 0 ? -errno : errno);
+    }
+    else if (nread <= max_read)
+    {
         buffer.produce_unsafe(nread);
-    return nread >= 0 ? nread : (errno > 0 ? -errno : errno);
+    }
+    else
+    {
+        int total_size = buffer.capacity() + nread;
+        int mcp_size1 = buffer.getAvailableDataSize() + max_read;
+
+        util::Buffer new_buffer(total_size);
+
+        memcpy(new_buffer.getBuffer(), buffer.consumer(), mcp_size1);
+        memcpy(new_buffer.getBuffer()+mcp_size1, extrabuf, nread-max_read);
+        new_buffer.produce_unsafe(mcp_size1+nread-max_read);
+
+        buffer = new_buffer;
+    }
+
+    return nread;
 }
 
 }
@@ -130,7 +157,6 @@ int IOBuffer::read(int fd, int max)
         Buffer buffer(global::g_read_io_buffer_limit);
         _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
     }
-
     assert(_buffer_list.size() == 1);
 
     Buffer& buffer = _buffer_list.front()->buffer;
@@ -159,7 +185,7 @@ int IOBuffer::write(int fd, bool& null_loop)
 
     const int writev_size = mmin(IOV_MAX, 1024);
     const int sendv_size = size > writev_size ? writev_size : size;
-    struct iovec write_vec[writev_size];
+    struct iovec write_vec[sendv_size];
 
     int will_send_size = 0;
     int vec_idx = 0;
@@ -187,10 +213,8 @@ int IOBuffer::write(int fd, bool& null_loop)
             delete entry;
             ++i;
         }
-        /*
         if (_buffer_list.size() > 100)
-            fprintf(stderr, "%d:%d\n", sendv_size, _buffer_list.size());
-        */
+            fprintf(stderr, "+%d:%d\n", sendv_size, _buffer_list.size());
 
         return nwrite;
     }
@@ -206,10 +230,12 @@ int IOBuffer::write(int fd, bool& null_loop)
             delete entry;
             entry = _buffer_list.front();
         }
-        /*
         if (_buffer_list.size() > 100)
-            fprintf(stderr, "%d\n", _buffer_list.size());
-        */
+            fprintf(stderr, "-%d:%d:%d(%d:%d)\n", sendv_size,
+                    _buffer_list.size(),
+                    size,
+                    nwrite,
+                    will_send_size);
 
         if (nbytes > 0)
             entry->buffer.consume_unsafe(nbytes);

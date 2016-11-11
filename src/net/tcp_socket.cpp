@@ -41,10 +41,11 @@ int TcpSocket::listen(int port)
         return -1;
     }
 
-    int rcv_buffer_size = 65535;
-    int snd_buffer_size = 2*rcv_buffer_size;
+    int snd_buffer_size = 102400;
     if (::setsockopt(_fd, SOL_SOCKET, SO_SNDBUF, &snd_buffer_size, sizeof(snd_buffer_size)) == -1)
         perror("set socket send buffer size: ");
+
+    int rcv_buffer_size = 102400;
     if (::setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, &rcv_buffer_size, sizeof(rcv_buffer_size)) == -1)
         perror("set socket recv buffer size: ");
 
@@ -118,11 +119,13 @@ int TcpSocket::connect(const struct sockaddr_in* addr, bool nonblocking)
         return -1;
     }
 
-    int buffer_size = 65535;
-    ::setsockopt(_fd, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
+    int buffer_size = 102400;
+    if (::setsockopt(_fd, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size)) < 0)
+        perror("set socket send buffer size: ");
 
-    buffer_size = buffer_size * 2;
-    ::setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+    buffer_size = 102400;
+    if (::setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size)) < 0)
+        perror("set socket recv buffer size: ");
 
     if (nonblocking)
     {

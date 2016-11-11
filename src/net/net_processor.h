@@ -301,8 +301,9 @@ class NetProcessor : public CallbackObj
             buffer.consume_unsafe(-8);
 
             // 至此，buffer被夺走
-            util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, 0, 0);
-            return conn->send(entry);
+            return conn->send(buffer);
+            //util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, 0, 0);
+            //return conn->send(entry);
         }
 
         inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
@@ -320,8 +321,7 @@ class NetProcessor : public CallbackObj
                 util::Guard<PendingLocker> m(_pending_locker);
                 _pending_data_list.push_back(entry);
             }
-
-            evnet::ev_wakeup(_reactor);
+            //evnet::ev_wakeup(_reactor);
 
             return 0;
         }

@@ -135,6 +135,17 @@ void NetConnection::processor(int event, void* data)
     }
     */
 
+    if (event & evnet::EV_IO_WRITE)
+    {
+        conn->handleWriteEvent();
+        if (conn->_error != NET_NONE)
+        {
+            Input input(conn, 0);
+            conn->_cb->handleEvent(EVENT_NET_ERROR, (void*)&input);
+            return;
+        }
+    }
+
     if (event & evnet::EV_IO_READ)
     {
         conn->handleReadEvent();
@@ -149,16 +160,6 @@ void NetConnection::processor(int event, void* data)
             Input input(conn, 0);
             conn->_cb->handleEvent(EVENT_NET_ERROR, (void*)&input);
             return;
-        }
-    }
-
-    if (event & evnet::EV_IO_WRITE)
-    {
-        conn->handleWriteEvent();
-        if (conn->_error != NET_NONE)
-        {
-            Input input(conn, 0);
-            conn->_cb->handleEvent(EVENT_NET_ERROR, (void*)&input);
         }
     }
 }

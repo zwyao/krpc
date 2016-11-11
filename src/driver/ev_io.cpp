@@ -147,6 +147,7 @@ void EvIo::delEvent()
     if (unlikely(_core->c.active != EV_ACTIVE_MAGIC)) return;
     ev_io_del(_loop, _core);
     _core->c.active = 0;
+    _events = 0;
 }
 
 }

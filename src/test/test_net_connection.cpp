@@ -19,18 +19,18 @@ class Demo : public WhenReceivePacket
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            pipe.sendForceAsyn(buffer);
-            //pipe.send(buffer);
+            //pipe.sendForceAsyn(buffer);
+            pipe.send(buffer);
         }
 };
 
 int main(int argc, char** argv)
 {
     global::small_buffer_pool_init(1024, 1024);
-    global::large_buffer_pool_init(1024, 8192);
+    global::large_buffer_pool_init(8192, 8192);
 
     Demo demo;
-    NetManager net_manager(&demo, 1);
+    NetManager net_manager(&demo, 0);
     net_manager.startAcceptor(9000);
     net_manager.run();
 }

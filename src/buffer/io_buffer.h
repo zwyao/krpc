@@ -36,9 +36,77 @@ class IOBuffer
             }
         }
 
+        inline void append(util::Buffer& buffer)
+        {
+            int send_sz = buffer.getAvailableDataSize();
+            if (_buffer_list.empty())
+            {
+                int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
+                util::Buffer new_buffer(new_sz);
+                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+            }
+            else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+            {
+                util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+                int cp_sz = pre_buffer.getAvailableSpaceSize();
+                ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
+                pre_buffer.produce_unsafe(cp_sz);
+                buffer.consume_unsafe(cp_sz);
+                send_sz -= cp_sz;
+
+                int new_sz = 2*pre_buffer.capacity();
+                util::Buffer new_buffer(new_sz);
+                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+            }
+
+            BufferList::BufferEntry* back = _buffer_list.back();
+            ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
+            back->buffer.produce_unsafe(send_sz);
+            buffer.consume_unsafe(send_sz);
+            /*
+               fprintf(stderr, "++++++++++++++++++:%d:%d\n",
+               _buffer_list.size(),
+               _buffer_list.prev(end)->buffer.getAvailableDataSize());
+               */
+            return;
+        }
+
         inline void append(BufferList::BufferEntry* entry)
         {
-            _buffer_list.push_back(entry);
+            util::Buffer& buffer = entry->buffer;
+            int send_sz = buffer.getAvailableDataSize();
+            if (_buffer_list.empty())
+            {
+                int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
+                util::Buffer new_buffer(new_sz);
+                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+            }
+            else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+            {
+                util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+                int cp_sz = pre_buffer.getAvailableSpaceSize();
+                ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
+                pre_buffer.produce_unsafe(cp_sz);
+                buffer.consume_unsafe(cp_sz);
+                send_sz -= cp_sz;
+
+                int new_sz = 2*pre_buffer.capacity();
+                util::Buffer new_buffer(new_sz);
+                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+            }
+
+            BufferList::BufferEntry* back = _buffer_list.back();
+            ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
+            back->buffer.produce_unsafe(send_sz);
+            buffer.consume_unsafe(send_sz);
+
+            delete entry;
+            /*
+               fprintf(stderr, "++++++++++++++++++:%d:%d\n",
+               _buffer_list.size(),
+               _buffer_list.prev(end)->buffer.getAvailableDataSize());
+               */
+            return;
         }
 
         // 读buffer只有一个

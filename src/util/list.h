@@ -120,7 +120,6 @@ class List
 
         int size() const { return _size; }
 
-        ListOp::ListNode& root() { return &_root; }
 
         void clear()
         {

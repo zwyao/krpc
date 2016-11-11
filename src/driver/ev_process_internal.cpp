@@ -335,11 +335,9 @@ void ev_run(EvLoop* loop)
         // 流程上保证了，先执行高优先级事件，再执行低优先级事件
         invoke_pending(loop);
 
-        if (loop->wakeup.flag)
-        {
-            if (loop->wakeup.f) loop->wakeup.f(loop->wakeup.data);
-            loop->wakeup.flag = 0;
-        }
+        if (loop->loop_end.f)
+            loop->loop_end.f(loop->loop_end.data);
+
     }// while (likely(loop->active_cnt && !loop->loop_done));
 }
 
