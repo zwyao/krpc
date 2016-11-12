@@ -1,7 +1,5 @@
 #include "net_connection.h"
 
-#include <errno.h>
-
 namespace knet
 {
 
@@ -99,7 +97,6 @@ void NetConnection::send_data()
         return;
     }
 
-    //if (_out_buffer.size() == 0)
     if (null_loop)
         _io->modEvFlag(evnet::EV_IO_READ);
 }
@@ -107,11 +104,7 @@ void NetConnection::send_data()
 void NetConnection::connecting()
 {
     int err = _sock->getSocketError();
-    if (err)
-    {
-        _error = NetConnection::NET_ERROR;
-    }
-    else if (_sock->isSelfConnect())
+    if (err || _sock->isSelfConnect())
     {
         _error = NetConnection::NET_ERROR;
     }
@@ -135,6 +128,7 @@ void NetConnection::processor(int event, void* data)
     }
     */
 
+    // 先执行写操作，优先发送数据
     if (event & evnet::EV_IO_WRITE)
     {
         conn->handleWriteEvent();

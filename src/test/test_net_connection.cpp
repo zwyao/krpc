@@ -8,7 +8,7 @@ using namespace util;
 class Demo : public WhenReceivePacket
 {
     public:
-        Demo () { }
+        Demo (int sync):_sync(sync) { }
         virtual ~Demo () { }
 
         virtual int process(NetPipe& pipe, Buffer& pack)
@@ -19,9 +19,14 @@ class Demo : public WhenReceivePacket
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
-            //pipe.sendForceAsyn(buffer);
-            pipe.send(buffer);
+            if (_sync)
+                pipe.send(buffer);
+            else
+                pipe.sendForceAsyn(buffer);
         }
+
+    private:
+        int _sync;
 };
 
 int main(int argc, char** argv)
@@ -29,8 +34,8 @@ int main(int argc, char** argv)
     global::small_buffer_pool_init(1024, 1024);
     global::large_buffer_pool_init(8192, 8192);
 
-    Demo demo;
-    NetManager net_manager(&demo, 0);
+    Demo demo(atoi(argv[1]));
+    NetManager net_manager(&demo, 1);
     net_manager.startAcceptor(9000);
     net_manager.run();
 }

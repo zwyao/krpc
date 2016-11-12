@@ -27,7 +27,7 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
     _conn_id_gen(),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
-    _frame_limit(global::g_read_io_buffer_limit - 8),
+    _frame_limit(64*1024*1024),
     _conn_empty_list(0)
 {
     if (_reactor == 0)
@@ -233,7 +233,7 @@ void NetProcessor::send_pending_data()
 {
     util::BufferList::TList pending_data;
     {
-        util::Guard<PendingLocker> m(_pending_locker);
+        util::Guard<PendingDataLocker> m(_pending_data_locker);
         pending_data.swap(_pending_data_list);
     }
 
@@ -256,16 +256,15 @@ void NetProcessor::send_pending_data()
         else
         {
             delete entry;
-            continue;
         }
     }
 }
 
 void NetProcessor::process_pending_connection()
 {
-    PendingConntionList pending_conn;
+    PendingConnectingList pending_conn;
     {
-        util::Guard<PendingLocker> m(_pending_locker);
+        util::Guard<PendingConnectingLocker> m(_pending_conn_locker);
         pending_conn.swap(_pending_conn_list);
     }
 
@@ -281,7 +280,7 @@ void NetProcessor::do_pending(void* data)
 {
     NetProcessor* processor = (NetProcessor*)data;
     processor->send_pending_data();
-    //processor->process_pending_connection();
+    processor->process_pending_connection();
 }
 
 void NetProcessor::on_idle_timer(int event, void* data)

@@ -108,7 +108,8 @@ class NetProcessor : public CallbackObj
         };
 
     private:
-        typedef util::MutexLocker PendingLocker;
+        typedef util::MutexLocker PendingDataLocker;
+        typedef util::MutexLocker PendingConnectingLocker;
 
     public:
         NetProcessor(WhenReceivePacket* processor, int idle_timeout);
@@ -136,11 +137,10 @@ class NetProcessor : public CallbackObj
                 conn->setMask(_mask_generator.nextID());
 
                 {
-                    util::Guard<PendingLocker> m(_pending_locker);
+                    util::Guard<PendingConnectingLocker> m(_pending_conn_locker);
                     _pending_conn_list.push_back(conn);
                 }
-
-                evnet::ev_wakeup(_reactor);
+                //evnet::ev_wakeup(_reactor);
 
                 return 0;
             }
@@ -318,7 +318,7 @@ class NetProcessor : public CallbackObj
             // 至此，buffer被夺走
             util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
             {
-                util::Guard<PendingLocker> m(_pending_locker);
+                util::Guard<PendingDataLocker> m(_pending_data_locker);
                 _pending_data_list.push_back(entry);
             }
             //evnet::ev_wakeup(_reactor);
@@ -350,11 +350,12 @@ class NetProcessor : public CallbackObj
         NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
         NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
 
-        PendingLocker _pending_locker;
+        PendingDataLocker _pending_data_locker;
         util::BufferList::TList _pending_data_list;
 
-        typedef util::List<NetConnection, &NetConnection::list_node> PendingConntionList;
-        PendingConntionList _pending_conn_list;
+        typedef util::List<NetConnection, &NetConnection::list_node> PendingConnectingList;
+        PendingConnectingLocker _pending_conn_locker;
+        PendingConnectingList _pending_conn_list;
 
         friend class TimeWheel;
 };

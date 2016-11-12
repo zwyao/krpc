@@ -8,7 +8,7 @@
 namespace global
 {
 
-int g_read_io_buffer_limit = 1024000;
+int g_read_io_buffer_init = 1024000;
 
 void small_buffer_pool_init(int block_size, int block_count)
 {
@@ -154,24 +154,12 @@ int IOBuffer::read(int fd, int max)
 {
     if (unlikely(_buffer_list.empty()))
     {
-        Buffer buffer(global::g_read_io_buffer_limit);
+        util::Buffer buffer(global::g_read_io_buffer_init);
         _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
     }
     assert(_buffer_list.size() == 1);
-
-    Buffer& buffer = _buffer_list.front()->buffer;
-    int avl_buffer_size = buffer.getAvailableSpaceSize();
-    if (unlikely(max > avl_buffer_size))
-    {
-        Buffer tmp_buf = getSmallBuffer(buffer.capacity()+max);
-        buffer.copyTo(tmp_buf);
-        buffer = tmp_buf;
-    }
-
-    if (max < avl_buffer_size)
-        max = avl_buffer_size;
-
-    return read_data(fd, max, buffer);
+    max = _buffer_list.front()->buffer.getAvailableSpaceSize();
+    return read_data(fd, max, _buffer_list.front()->buffer);
 }
 
 int IOBuffer::write(int fd, bool& null_loop)
