@@ -1,7 +1,9 @@
 #ifndef __BUFFER_LIST_H__
 #define __BUFFER_LIST_H__
 
+#include "buffer.h"
 #include "list.h"
+#include "locker.h"
 
 namespace util
 {
@@ -27,6 +29,11 @@ struct BufferEntry
     Target target;
     util::ListOp::ListNode list_node;
 
+    BufferEntry():
+        target(-1, -1)
+    {
+    }
+
     BufferEntry(Buffer& buf, int id, int m):
         buffer(buf),
         target(id, m)
@@ -35,6 +42,49 @@ struct BufferEntry
 };
 
 typedef util::List<BufferEntry, &BufferEntry::list_node> TList;
+
+class BufferEntryCache
+{
+    private:
+        typedef util::SpinLocker Locker;
+
+    public:
+        BufferEntryCache(int size = 65536):
+            _size(size)
+        {
+        }
+
+        ~BufferEntryCache() { }
+
+        BufferEntry* get()
+        {
+            if (likely(_list.empty() == false))
+            {
+                util::Guard<Locker> m(_locker);
+                BufferEntry* entry = _list.front();
+                _list.pop_front();
+                return entry;
+            }
+            else
+            {
+                return new BufferEntry();
+            }
+        }
+
+        void put(BufferEntry* entry)
+        {
+            util::Guard<Locker> m(_locker);
+            _list.push_back(entry);
+        }
+
+    private:
+        void init();
+
+    private:
+        int _size;
+        Locker _locker;
+        TList _list;
+};
 
 }
 

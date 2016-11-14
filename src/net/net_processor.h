@@ -108,8 +108,8 @@ class NetProcessor : public CallbackObj
         };
 
     private:
-        typedef util::MutexLocker PendingDataLocker;
-        typedef util::MutexLocker PendingConnectingLocker;
+        typedef util::SpinLocker PendingDataLocker;
+        typedef util::SpinLocker PendingConnectingLocker;
 
     public:
         NetProcessor(WhenReceivePacket* processor, int idle_timeout);
@@ -221,13 +221,13 @@ class NetProcessor : public CallbackObj
             if (_thread_id == util::CurrentThread::getTid())
                 return send_by_me(conn_id, mask, channel_id, buffer);
             else
-                return send_by_queue(conn_id, mask, channel_id, buffer);;
+                return send_by_queue(conn_id, mask, channel_id, buffer);
         }
 
         // for test
         inline int sendAsyn(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
-            return send_by_queue(conn_id, mask, channel_id, buffer);;
+            return send_by_queue(conn_id, mask, channel_id, buffer);
         }
 
         inline int myID() const { return _id; }
@@ -302,8 +302,6 @@ class NetProcessor : public CallbackObj
 
             // 至此，buffer被夺走
             return conn->send(buffer);
-            //util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, 0, 0);
-            //return conn->send(entry);
         }
 
         inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
@@ -316,14 +314,16 @@ class NetProcessor : public CallbackObj
             buffer.consume_unsafe(-8);
 
             // 至此，buffer被夺走
-            util::BufferList::BufferEntry* entry = new util::BufferList::BufferEntry(buffer, conn_id, mask);
+            util::BufferList::BufferEntry* entry =
+                new (std::nothrow) util::BufferList::BufferEntry(buffer, conn_id, mask);
+            if (likely(entry != 0))
             {
                 util::Guard<PendingDataLocker> m(_pending_data_locker);
                 _pending_data_list.push_back(entry);
+                return 0;
             }
-            //evnet::ev_wakeup(_reactor);
 
-            return 0;
+            return -1;
         }
 
     private:

@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static int g_count = 0;
+
 namespace knet
 {
 
@@ -237,10 +239,12 @@ void NetProcessor::send_pending_data()
         pending_data.swap(_pending_data_list);
     }
 
+    int count = 0;
     while (!pending_data.empty())
     {
         util::BufferList::BufferEntry* entry = pending_data.front();
         pending_data.pop_front();
+        ++count;
 
         int conn_id = entry->target.conn_id;
         int mask = entry->target.mask;
@@ -258,6 +262,9 @@ void NetProcessor::send_pending_data()
             delete entry;
         }
     }
+
+    if (count > g_count)
+        g_count = count;
 }
 
 void NetProcessor::process_pending_connection()
@@ -296,6 +303,7 @@ void NetProcessor::TimeWheel::check()
     _timedout_idx = (_timedout_idx+1) % _size;
 
     fprintf(stderr, "%d:%d:%d\n", _current_idx, _timedout_idx, _size);
+    fprintf(stderr, "++++++++++++++++++%d\n", g_count);
     TimeWheelList& list = _wheel[_timedout_idx];
     while (list.empty() == false)
     {
