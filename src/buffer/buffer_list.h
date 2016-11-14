@@ -60,7 +60,7 @@ class BufferEntryCache
         {
             if (likely(_list.empty() == false))
             {
-                util::Guard<Locker> m(_locker);
+                //util::Guard<Locker> m(_locker);
                 BufferEntry* entry = _list.front();
                 _list.pop_front();
                 return entry;
@@ -73,7 +73,7 @@ class BufferEntryCache
 
         void put(BufferEntry* entry)
         {
-            util::Guard<Locker> m(_locker);
+            //util::Guard<Locker> m(_locker);
             _list.push_back(entry);
         }
 

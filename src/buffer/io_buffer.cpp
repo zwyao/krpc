@@ -198,7 +198,7 @@ int IOBuffer::write(int fd, bool& null_loop)
         {
             BufferList::BufferEntry* entry = _buffer_list.front();
             _buffer_list.pop_front();
-            delete entry;
+            _buffer_entry_cache.put(entry);
             ++i;
         }
         if (_buffer_list.size() > 100)
@@ -215,7 +215,7 @@ int IOBuffer::write(int fd, bool& null_loop)
         {
             nbytes -= have_data;
             _buffer_list.pop_front();
-            delete entry;
+            _buffer_entry_cache.put(entry);
             entry = _buffer_list.front();
         }
         if (_buffer_list.size() > 100)

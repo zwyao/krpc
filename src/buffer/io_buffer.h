@@ -13,7 +13,8 @@ namespace util
 class IOBuffer
 {
     public:
-        IOBuffer()
+        IOBuffer():
+            _buffer_entry_cache(256)
         {
         }
 
@@ -43,7 +44,9 @@ class IOBuffer
             {
                 int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
                 util::Buffer new_buffer(new_sz);
-                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+                BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+                entry->buffer = new_buffer;
+                _buffer_list.push_back(entry);
             }
             else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
             {
@@ -54,9 +57,10 @@ class IOBuffer
                 buffer.consume_unsafe(cp_sz);
                 send_sz -= cp_sz;
 
-                int new_sz = 2*pre_buffer.capacity();
-                util::Buffer new_buffer(new_sz);
-                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+                util::Buffer new_buffer(2*pre_buffer.capacity());
+                BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+                entry->buffer = new_buffer;
+                _buffer_list.push_back(entry);
             }
 
             BufferList::BufferEntry* back = _buffer_list.back();
@@ -79,7 +83,9 @@ class IOBuffer
             {
                 int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
                 util::Buffer new_buffer(new_sz);
-                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+                BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+                new_entry->buffer = new_buffer;
+                _buffer_list.push_back(new_entry);
             }
             else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
             {
@@ -90,9 +96,10 @@ class IOBuffer
                 buffer.consume_unsafe(cp_sz);
                 send_sz -= cp_sz;
 
-                int new_sz = 2*pre_buffer.capacity();
-                util::Buffer new_buffer(new_sz);
-                _buffer_list.push_back(new util::BufferList::BufferEntry(new_buffer, 0, 0));
+                util::Buffer new_buffer(2*pre_buffer.capacity());
+                BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+                new_entry->buffer = new_buffer;
+                _buffer_list.push_back(new_entry);
             }
 
             BufferList::BufferEntry* back = _buffer_list.back();
@@ -124,7 +131,7 @@ class IOBuffer
 
     private:
         BufferList::TList _buffer_list;
-        //Buffer _buffer;
+        BufferList::BufferEntryCache _buffer_entry_cache;
 
     public:
         static void small_buffer_pool_init(int block_size, int block_count);
