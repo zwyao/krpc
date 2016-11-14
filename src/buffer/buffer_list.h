@@ -3,7 +3,6 @@
 
 #include "buffer.h"
 #include "list.h"
-#include "locker.h"
 
 namespace util
 {
@@ -45,9 +44,6 @@ typedef util::List<BufferEntry, &BufferEntry::list_node> TList;
 
 class BufferEntryCache
 {
-    private:
-        typedef util::SpinLocker Locker;
-
     public:
         BufferEntryCache(int size = 65536):
             _size(size)
@@ -60,7 +56,6 @@ class BufferEntryCache
         {
             if (likely(_list.empty() == false))
             {
-                //util::Guard<Locker> m(_locker);
                 BufferEntry* entry = _list.front();
                 _list.pop_front();
                 return entry;
@@ -73,7 +68,7 @@ class BufferEntryCache
 
         void put(BufferEntry* entry)
         {
-            //util::Guard<Locker> m(_locker);
+            entry->buffer.release();
             _list.push_back(entry);
         }
 
@@ -82,7 +77,6 @@ class BufferEntryCache
 
     private:
         int _size;
-        Locker _locker;
         TList _list;
 };
 

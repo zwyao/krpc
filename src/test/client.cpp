@@ -133,6 +133,7 @@ int main(int argc, char** argv)
     ServerLocation target;
     target.hostname = argv[1];
     target.port = atoi(argv[2]);
+    g_count = atoi(argv[3]);
 
     TcpSocket sock;
     int ret = sock.connect(target);
@@ -140,14 +141,15 @@ int main(int argc, char** argv)
 
     struct timeval tv1, tv2;
 
+    /*
     gettimeofday(&tv1, 0);
     echo(sock.fd(), argv[3]);
     echo(sock.fd(), argv[3]);
     echo(sock.fd(), argv[3]);
     gettimeofday(&tv2, 0);
     fprintf(stderr, "%d us\n", (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec));
+    */
 
-    /*
     gettimeofday(&tv1, 0);
     pthread_t r;
     pthread_t w;
@@ -159,6 +161,5 @@ int main(int argc, char** argv)
     gettimeofday(&tv2, 0);
     long cost = (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec);
     fprintf(stderr, "%ld us: %d\n", cost, cost/g_count);
-    */
 }
 
