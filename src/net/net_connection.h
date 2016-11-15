@@ -5,6 +5,7 @@
 #include "tcp_socket.h"
 #include "callback_object.h"
 #include "io_buffer.h"
+#include "write_buffer_allocator.h"
 #include "list.h"
 #include "ev.h"
 #include "ev_io.h"
@@ -134,9 +135,9 @@ class NetConnection
         inline void setID(int id) { _id = id; }
         inline void setMask(int mask) { _mask = mask; }
 
-        inline int send(util::Buffer& buffer)
+        inline int send(util::Buffer& buffer, util::WriteBufferAllocator& allocator)
         {
-            _out_buffer.append(buffer);
+            _out_buffer.append(buffer, allocator);
             if ((_io->events() & evnet::EV_IO_WRITE) == 0)
                 _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
             return 0;
@@ -146,7 +147,7 @@ class NetConnection
          * 把buffer添加到发送队列
          * @param[in] buffer 的内存会被夺走
          */
-        inline int send(util::BufferList::BufferEntry* entry)
+        inline int send(util::BufferList::BufferEntry* entry, util::WriteBufferAllocator& allocator)
         {
             /*
             int ret = _out_buffer.write(_sock->fd(), entry);
@@ -163,7 +164,7 @@ class NetConnection
                 return -1;
             }
             */
-            _out_buffer.append(entry);
+            _out_buffer.append(entry, allocator);
             if ((_io->events() & evnet::EV_IO_WRITE) == 0)
                 _io->modEvFlag(evnet::EV_IO_READ|evnet::EV_IO_WRITE);
             return 0;
@@ -212,7 +213,9 @@ class NetConnection
         NetConnection::State _state;
         NetConnection::Error _error;
 
+        // read buffer,初始大小global::g_read_io_buffer_init,按需增长
         util::IOBuffer _in_buffer;
+        // write buffer
         util::IOBuffer _out_buffer;
 
     public:

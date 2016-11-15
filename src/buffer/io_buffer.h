@@ -3,6 +3,7 @@
 
 #include "buffer.h"
 #include "buffer_list.h"
+#include "write_buffer_allocator.h"
 #include "fixed_size_allocator.h"
 
 #include <assert.h>
@@ -37,84 +38,8 @@ class IOBuffer
             }
         }
 
-        inline void append(util::Buffer& buffer)
-        {
-            int send_sz = buffer.getAvailableDataSize();
-            if (_buffer_list.empty())
-            {
-                int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
-                util::Buffer new_buffer(new_sz);
-                BufferList::BufferEntry* entry = _buffer_entry_cache.get();
-                entry->buffer = new_buffer;
-                _buffer_list.push_back(entry);
-            }
-            else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
-            {
-                util::Buffer& pre_buffer = _buffer_list.back()->buffer;
-                int cp_sz = pre_buffer.getAvailableSpaceSize();
-                ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
-                pre_buffer.produce_unsafe(cp_sz);
-                buffer.consume_unsafe(cp_sz);
-                send_sz -= cp_sz;
-
-                util::Buffer new_buffer(2*pre_buffer.capacity());
-                BufferList::BufferEntry* entry = _buffer_entry_cache.get();
-                entry->buffer = new_buffer;
-                _buffer_list.push_back(entry);
-            }
-
-            BufferList::BufferEntry* back = _buffer_list.back();
-            ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
-            back->buffer.produce_unsafe(send_sz);
-            buffer.consume_unsafe(send_sz);
-            /*
-               fprintf(stderr, "++++++++++++++++++:%d:%d\n",
-               _buffer_list.size(),
-               _buffer_list.prev(end)->buffer.getAvailableDataSize());
-               */
-            return;
-        }
-
-        inline void append(BufferList::BufferEntry* entry)
-        {
-            util::Buffer& buffer = entry->buffer;
-            int send_sz = buffer.getAvailableDataSize();
-            if (_buffer_list.empty())
-            {
-                int new_sz = send_sz > 65536 ? (send_sz+4095)&~4095 : 65536;
-                util::Buffer new_buffer(new_sz);
-                BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
-                new_entry->buffer = new_buffer;
-                _buffer_list.push_back(new_entry);
-            }
-            else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
-            {
-                util::Buffer& pre_buffer = _buffer_list.back()->buffer;
-                int cp_sz = pre_buffer.getAvailableSpaceSize();
-                ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
-                pre_buffer.produce_unsafe(cp_sz);
-                buffer.consume_unsafe(cp_sz);
-                send_sz -= cp_sz;
-
-                util::Buffer new_buffer(2*pre_buffer.capacity());
-                BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
-                new_entry->buffer = new_buffer;
-                _buffer_list.push_back(new_entry);
-            }
-
-            BufferList::BufferEntry* back = _buffer_list.back();
-            ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
-            back->buffer.produce_unsafe(send_sz);
-            buffer.consume_unsafe(send_sz);
-
-            delete entry;
-            /*
-               fprintf(stderr, "++++++++++++++++++:%d:%d\n",
-               _buffer_list.size(),
-               _buffer_list.prev(end)->buffer.getAvailableDataSize());
-               */
-            return;
-        }
+        void append(util::Buffer& buffer, WriteBufferAllocator& allocator);
+        void append(BufferList::BufferEntry* entry, WriteBufferAllocator& allocator);
 
         // 读buffer只有一个
         inline Buffer& getReadBuffer()
@@ -136,8 +61,6 @@ class IOBuffer
     public:
         static void small_buffer_pool_init(int block_size, int block_count);
         static void large_buffer_pool_init(int block_size, int block_count);
-        static void small_buffer_deallocator(char* ptr);
-        static void large_buffer_deallocator(char* ptr);
         static Buffer getSmallBuffer(int size);
         static Buffer getLargeBuffer(int size);
         static int getSmallBufferSize();

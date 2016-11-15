@@ -27,6 +27,7 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
     _idle_queue(),
     _mask_generator(-1),
     _conn_id_gen(),
+    _write_buffer_allocator(65536),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(64*1024*1024),
@@ -150,13 +151,18 @@ int NetProcessor::process(int code, void* data)
 int NetProcessor::process_read(NetProcessor::Session& session, util::Buffer& buffer)
 {
     int pack_num = 0;
-    while (check_data(session, buffer))
+    int data_total_size = 0;
+    int data_size = 0;
+    while ((data_size = check_data(session, buffer)) > 0)
+    {
         ++pack_num;
+        data_total_size += data_size;
+    }
 
     if (session._state == NetProcessor::Session::INVALID)
         return -1;
 
-    if (pack_num > 0)
+    if (pack_num > 0 && buffer.getAvailableSpaceSize() < data_total_size)
         buffer.compact();
 
     return 0;
@@ -219,7 +225,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
                 _processor->process(pipe, pack);
 
                 session._state = NetProcessor::Session::FRAME_HEAD;
-                return 1;
+                return session._frame_size+8;
             }
 
             break;
@@ -255,7 +261,7 @@ void NetProcessor::send_pending_data()
         NetConnection* conn = _connections[conn_id];
         if (likely(conn != 0 && conn->myMask() == mask))
         {
-            conn->send(entry);
+            conn->send(entry, _write_buffer_allocator);
         }
         else
         {
@@ -304,6 +310,7 @@ void NetProcessor::TimeWheel::check()
 
     fprintf(stderr, "%d:%d:%d\n", _current_idx, _timedout_idx, _size);
     fprintf(stderr, "++++++++++++++++++%d\n", g_count);
+    _net_processor->_write_buffer_allocator.printInfo();
     TimeWheelList& list = _wheel[_timedout_idx];
     while (list.empty() == false)
     {

@@ -105,23 +105,13 @@ void IOBuffer::large_buffer_pool_init(int block_size, int block_count)
     _large_buffer_size = block_size;
 }
 
-void IOBuffer::small_buffer_deallocator(char* ptr)
-{
-    _small_buffer_allocator.deallocate(ptr);
-}
-
-void IOBuffer::large_buffer_deallocator(char* ptr)
-{
-    _large_buffer_allocator.deallocate(ptr);
-}
-
 Buffer IOBuffer::getSmallBuffer(int size)
 {
     if (likely(_small_buffer_init && size <= _small_buffer_size))
     {
         char* mem = _small_buffer_allocator.allocate();
         if (likely(mem != 0))
-            return Buffer(mem, _small_buffer_size, small_buffer_deallocator);
+            return Buffer(mem, _small_buffer_size, _small_buffer_allocator.getDeallocator());
         else
             return size > 0 ? Buffer(size) : Buffer(_small_buffer_size);
     }
@@ -137,7 +127,7 @@ Buffer IOBuffer::getLargeBuffer(int size)
     {
         char* mem = _large_buffer_allocator.allocate();
         if (likely(mem != 0))
-            return Buffer(mem, _large_buffer_size, large_buffer_deallocator);
+            return Buffer(mem, _large_buffer_size, _large_buffer_allocator.getDeallocator());
         else
             return size > 0 ? Buffer(size) : Buffer(_large_buffer_size);
     }
@@ -201,8 +191,6 @@ int IOBuffer::write(int fd, bool& null_loop)
             _buffer_entry_cache.put(entry);
             ++i;
         }
-        if (_buffer_list.size() > 100)
-            fprintf(stderr, "+%d:%d\n", sendv_size, _buffer_list.size());
 
         return nwrite;
     }
@@ -218,12 +206,6 @@ int IOBuffer::write(int fd, bool& null_loop)
             _buffer_entry_cache.put(entry);
             entry = _buffer_list.front();
         }
-        if (_buffer_list.size() > 100)
-            fprintf(stderr, "-%d:%d:%d(%d:%d)\n", sendv_size,
-                    _buffer_list.size(),
-                    size,
-                    nwrite,
-                    will_send_size);
 
         if (nbytes > 0)
             entry->buffer.consume_unsafe(nbytes);
@@ -270,6 +252,96 @@ int IOBuffer::write(int fd, BufferList::BufferEntry* entry)
         _buffer_list.push_back(entry);
         return nbytes;
     }
+}
+
+
+void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
+{
+    int send_sz = buffer.getAvailableDataSize();
+    if (_buffer_list.empty())
+    {
+        int real_sz = 0;
+        char* ptr = allocator.allocate(send_sz, real_sz);
+        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+        BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+        entry->buffer = new_buffer;
+        _buffer_list.push_back(entry);
+    }
+    else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+    {
+        util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+        int cp_sz = pre_buffer.getAvailableSpaceSize();
+        ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
+        pre_buffer.produce_unsafe(cp_sz);
+        buffer.consume_unsafe(cp_sz);
+        send_sz -= cp_sz;
+
+        int real_sz = 0;
+        char* ptr = allocator.allocate(2*pre_buffer.capacity(), real_sz);
+        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+        BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+        entry->buffer = new_buffer;
+        _buffer_list.push_back(entry);
+    }
+
+    BufferList::BufferEntry* back = _buffer_list.back();
+    ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
+    back->buffer.produce_unsafe(send_sz);
+    buffer.consume_unsafe(send_sz);
+    /*
+       fprintf(stderr, "++++++++++++++++++:%d:%d\n",
+       _buffer_list.size(),
+       _buffer_list.prev(end)->buffer.getAvailableDataSize());
+       */
+    return;
+}
+
+void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allocator)
+{
+    util::Buffer& buffer = entry->buffer;
+    int send_sz = buffer.getAvailableDataSize();
+    if (_buffer_list.empty())
+    {
+        int real_sz = 0;
+        char* ptr = allocator.allocate(send_sz, real_sz);
+        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+        BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+        new_entry->buffer = new_buffer;
+        _buffer_list.push_back(new_entry);
+    }
+    else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+    {
+        util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+        int cp_sz = pre_buffer.getAvailableSpaceSize();
+        ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
+        pre_buffer.produce_unsafe(cp_sz);
+        buffer.consume_unsafe(cp_sz);
+        send_sz -= cp_sz;
+
+        int real_sz = 0;
+        char* ptr = allocator.allocate(2*pre_buffer.capacity(), real_sz);
+        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+        BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+        new_entry->buffer = new_buffer;
+        _buffer_list.push_back(new_entry);
+    }
+
+    BufferList::BufferEntry* back = _buffer_list.back();
+    ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
+    back->buffer.produce_unsafe(send_sz);
+    buffer.consume_unsafe(send_sz);
+
+    delete entry;
+    /*
+       fprintf(stderr, "++++++++++++++++++:%d:%d\n",
+       _buffer_list.size(),
+       _buffer_list.prev(end)->buffer.getAvailableDataSize());
+       */
+    return;
 }
 
 int IOBuffer::read(int fd, int max_read, Buffer& buffer)

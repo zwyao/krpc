@@ -162,7 +162,8 @@ FixedSizeAllocator::FixedSizeAllocator():
     _block_size(0),
     _block_count(0),
     _chunk_size(0),
-    _chunk_count(0)
+    _chunk_count(0),
+    _deallocator(this)
 {
 }
 
@@ -174,7 +175,8 @@ FixedSizeAllocator::FixedSizeAllocator(int block_size):
     _block_size(block_size),
     _block_count(256),
     _chunk_size(_block_size*_block_count),
-    _chunk_count(0)
+    _chunk_count(0),
+    _deallocator(this)
 {
     assert(_block_size > 0);
     assert(_chunk_size/_block_count == _block_size);
@@ -188,7 +190,8 @@ FixedSizeAllocator::FixedSizeAllocator(int block_size, int block_count):
     _block_size(block_size),
     _block_count(block_count),
     _chunk_size(_block_size*_block_count),
-    _chunk_count(0)
+    _chunk_count(0),
+    _deallocator(this)
 {
     assert(_block_size > 0);
     assert(_chunk_size/_block_count == _block_size);

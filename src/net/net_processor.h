@@ -8,6 +8,7 @@
 #include "defines.h"
 #include "current_thread.h"
 #include "locker.h"
+#include "write_buffer_allocator.h"
 #include "ev_timer.h"
 #include "ev.h"
 
@@ -301,7 +302,7 @@ class NetProcessor : public CallbackObj
             buffer.consume_unsafe(-8);
 
             // 至此，buffer被夺走
-            return conn->send(buffer);
+            return conn->send(buffer, _write_buffer_allocator);
         }
 
         inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
@@ -337,6 +338,7 @@ class NetProcessor : public CallbackObj
         TimeWheel _idle_queue;
         util::IDCreator _mask_generator;
         ConnIdGenerator _conn_id_gen;
+        util::WriteBufferAllocator _write_buffer_allocator;
 
         const pid_t _thread_id;
         const int _id;
