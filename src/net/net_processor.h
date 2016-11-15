@@ -113,7 +113,9 @@ class NetProcessor : public CallbackObj
         typedef util::SpinLocker PendingConnectingLocker;
 
     public:
-        NetProcessor(WhenReceivePacket* processor, int idle_timeout);
+        NetProcessor(WhenReceivePacket* processor,
+                int write_buffer_size,
+                int idle_timeout);
         virtual ~NetProcessor();
 
         void run();

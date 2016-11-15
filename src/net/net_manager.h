@@ -34,7 +34,7 @@ class NetConnector;
 class NetManager
 {
     public:
-        NetManager(WhenReceivePacket* processor, int idle_timeout = 0);
+        NetManager(WhenReceivePacket* processor);
         ~NetManager();
 
         /*
@@ -49,6 +49,10 @@ class NetManager
 
         void run();
 
+        // 在startNetProcessor()之前调用下面的set函数
+        void setIdleTimeout(int timeout) { _idle_timeout = timeout; }
+        void setWriteBufferBaseSize(int size) { _write_buffer_size = size; }
+
         //NetPipe getPipe(const ServerLocation& location);
 
         inline int getIdleTimeout() const { return _idle_timeout; }
@@ -61,6 +65,7 @@ class NetManager
         // 空闲链接的timeout，不是收发数据的timeout
         // 秒级
         int _idle_timeout;
+        int _write_buffer_size;
 };
 
 }

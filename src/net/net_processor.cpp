@@ -20,14 +20,16 @@ knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-NetProcessor::NetProcessor(WhenReceivePacket* processor, int idle_timeout):
+NetProcessor::NetProcessor(WhenReceivePacket* processor,
+        int write_buffer_size,
+        int idle_timeout):
     _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
     _idle_timer(0),
     _processor(processor),
     _idle_queue(),
     _mask_generator(-1),
     _conn_id_gen(),
-    _write_buffer_allocator(65536),
+    _write_buffer_allocator(write_buffer_size),
     _thread_id(util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(64*1024*1024),
