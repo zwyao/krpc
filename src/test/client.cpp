@@ -84,14 +84,15 @@ void* recv(void* arg)
     TcpSocket* sock = (TcpSocket*)arg;
     int fd = sock->fd();
 
-    char buffer[1024];
+    int buffer_size = 1048576;
+    char* buffer = (char*)::malloc(buffer_size);
     char* p = buffer;
     int have = 0;
 
     int i = 0;
     while (i < g_count)
     {
-        int ret = ::read(fd, p, 1024-have);
+        int ret = ::read(fd, p, buffer_size-have);
         if (ret > 0)
         {
             have += ret;

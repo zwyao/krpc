@@ -7,7 +7,10 @@
 
 using namespace knet;
 
+int g_channel_id_send = 1;
+int g_channel_id_recv = 1;
 int g_channel_id = 1;
+int g_count = 50000000;
 void echo(int fd)
 {
     char inbuffer[1024];
@@ -50,12 +53,13 @@ void* send(void* arg)
     *((unsigned int*)(buffer)) = htonl(0x416e4574);
     *((unsigned int*)(buffer+8)) = htonl(1);
     *((unsigned int*)(buffer+12)) = htonl(len);
-
     len += 16;
-    while (true)
+
+    int i = 0;
+    while (i < g_count)
     {
-        *((unsigned int*)(buffer+4)) = htonl(g_channel_id);
-        ++g_channel_id;
+        *((unsigned int*)(buffer+4)) = htonl(g_channel_id_send);
+        ++g_channel_id_send;
 
         int left = len;
         p = buffer;
@@ -70,9 +74,9 @@ void* send(void* arg)
             else
                 break;
         }
-    }
 
-    assert(0);
+        ++i;
+    }
 }
 
 void* recv(void* arg)
@@ -80,12 +84,15 @@ void* recv(void* arg)
     TcpSocket* sock = (TcpSocket*)arg;
     int fd = sock->fd();
 
-    char buffer[1024];
+    int buffer_size = 1048576;
+    char* buffer = (char*)::malloc(buffer_size);
     char* p = buffer;
     int have = 0;
-    while (true)
+
+    int i = 0;
+    while (i < g_count)
     {
-        int ret = ::read(fd, p, 1024-have);
+        int ret = ::read(fd, p, buffer_size-have);
         if (ret > 0)
         {
             have += ret;
@@ -94,15 +101,15 @@ void* recv(void* arg)
             char* data = buffer;
             while (have >= 29)
             {
+                assert(ntohl(*((unsigned int*)(data+4))) == g_channel_id_recv);
                 assert(ntohl(*((unsigned int*)(data+12))) == 13);
-                if(strcmp(data+16, "hello world!") != 0)
-                {
-                    fprintf(stderr, "%s:%d\n", data+12, ntohl(*((unsigned int*)(data+12))));
-                    assert(0);
-                }
+                assert(strcmp(data+16, "hello world!") == 0);
 
                 data += 29;
                 have -= 29;
+
+                ++g_channel_id_recv;
+                ++i;
             }
 
             if (data > buffer && have > 0)
@@ -118,10 +125,8 @@ void* recv(void* arg)
             }
         }
         else
-            break;
+            assert(0);
     }
-
-    assert(0);
 }
 
 int main(int argc, char** argv)
@@ -129,20 +134,23 @@ int main(int argc, char** argv)
     ServerLocation target;
     target.hostname = argv[1];
     target.port = atoi(argv[2]);
+    g_count = atoi(argv[3]);
 
     TcpSocket sock;
     int ret = sock.connect(target);
     assert(ret == 1);
 
     struct timeval tv1, tv2;
+    /*
     gettimeofday(&tv1, 0);
     echo(sock.fd());
     echo(sock.fd());
     echo(sock.fd());
     gettimeofday(&tv2, 0);
     fprintf(stderr, "%d us\n", (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec));
+    */
 
-    /*
+    gettimeofday(&tv1, 0);
     pthread_t r;
     pthread_t w;
     pthread_create(&r, 0, recv, &sock);
@@ -150,6 +158,8 @@ int main(int argc, char** argv)
 
     pthread_join(r, 0);
     pthread_join(w, 0);
-    */
+    gettimeofday(&tv2, 0);
+    long cost = (tv2.tv_sec-tv1.tv_sec)*1000000 + (tv2.tv_usec-tv1.tv_usec);
+    fprintf(stderr, "%ld us: %d\n", cost, cost/g_count);
 }
 

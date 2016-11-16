@@ -8,7 +8,7 @@
 namespace global
 {
 
-int g_read_io_buffer_init = 1024000;
+int g_read_io_buffer_init = 1048576;
 
 void small_buffer_pool_init(int block_size, int block_count)
 {
@@ -62,6 +62,7 @@ inline int read_data(int fd, int max_read, util::Buffer& buffer)
     }
     else
     {
+        fprintf(stderr, "+++++++++++++++++++++++++++++++++++++++++++++++%d: %d\n", max_read, nread);
         int total_size = buffer.capacity() + nread;
         int mcp_size1 = buffer.getAvailableDataSize() + max_read;
 
@@ -142,7 +143,7 @@ int IOBuffer::getLargeBufferSize() { return _large_buffer_size; }
 
 int IOBuffer::read(int fd, int max)
 {
-    if (unlikely(_buffer_list.empty()))
+    if (unlikely(_buffer_list.empty() == true))
     {
         util::Buffer buffer(global::g_read_io_buffer_init);
         _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
@@ -191,6 +192,12 @@ int IOBuffer::write(int fd, bool& null_loop)
             _buffer_entry_cache.put(entry);
             ++i;
         }
+        if (_buffer_list.size() > 0)
+            fprintf(stderr, "writev: %d:%d++++++++++++++++++++++++++++++++++++%d:%d\n",
+                    sendv_size,
+                    vec_idx,
+                    _buffer_list.size(),
+                    nwrite);
 
         return nwrite;
     }
@@ -209,6 +216,13 @@ int IOBuffer::write(int fd, bool& null_loop)
 
         if (nbytes > 0)
             entry->buffer.consume_unsafe(nbytes);
+
+        if (_buffer_list.size() > 0)
+            fprintf(stderr, "writev: %d:%d------------------------------------%d:%d\n",
+                    sendv_size,
+                    vec_idx,
+                    _buffer_list.size(),
+                    nwrite);
 
         return nwrite >= 0 ? nwrite : (errno > 0 ? -errno : errno);
     }
@@ -278,7 +292,9 @@ void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
         send_sz -= cp_sz;
 
         int real_sz = 0;
-        char* ptr = allocator.allocate(2*pre_buffer.capacity(), real_sz);
+        int expect_sz = pre_buffer.capacity();
+        expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
+        char* ptr = allocator.allocate(expect_sz, real_sz);
         util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
 
         BufferList::BufferEntry* entry = _buffer_entry_cache.get();
@@ -290,11 +306,6 @@ void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
     ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
     back->buffer.produce_unsafe(send_sz);
     buffer.consume_unsafe(send_sz);
-    /*
-       fprintf(stderr, "++++++++++++++++++:%d:%d\n",
-       _buffer_list.size(),
-       _buffer_list.prev(end)->buffer.getAvailableDataSize());
-       */
     return;
 }
 
@@ -322,7 +333,9 @@ void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allo
         send_sz -= cp_sz;
 
         int real_sz = 0;
-        char* ptr = allocator.allocate(2*pre_buffer.capacity(), real_sz);
+        int expect_sz = pre_buffer.capacity();
+        expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
+        char* ptr = allocator.allocate(expect_sz, real_sz);
         util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
 
         BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
@@ -336,11 +349,7 @@ void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allo
     buffer.consume_unsafe(send_sz);
 
     delete entry;
-    /*
-       fprintf(stderr, "++++++++++++++++++:%d:%d\n",
-       _buffer_list.size(),
-       _buffer_list.prev(end)->buffer.getAvailableDataSize());
-       */
+
     return;
 }
 

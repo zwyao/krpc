@@ -153,18 +153,15 @@ int NetProcessor::process(int code, void* data)
 int NetProcessor::process_read(NetProcessor::Session& session, util::Buffer& buffer)
 {
     int pack_num = 0;
-    int data_total_size = 0;
     int data_size = 0;
     while ((data_size = check_data(session, buffer)) > 0)
-    {
         ++pack_num;
-        data_total_size += data_size;
-    }
 
     if (session._state == NetProcessor::Session::INVALID)
         return -1;
 
-    if (pack_num > 0 && buffer.getAvailableSpaceSize() < data_total_size)
+    //if (pack_num > 0 && buffer.getAvailableSpaceSize() < data_total_size)
+    if (pack_num > 0)
         buffer.compact();
 
     return 0;
@@ -192,7 +189,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
             session._frame_size = ntohl(*((unsigned int*)frame));
             session._channel_id = ntohl(*((unsigned int*)(frame+4)));
             // 跳过8字节
-            buffer.consume(8);
+            buffer.consume_unsafe(8);
 
             // 包含负值的检查
             if (unlikely((unsigned int)session._frame_size > (unsigned int)_frame_limit))

@@ -198,14 +198,14 @@ class Buffer
         {
             //TODO
             int avl_data_size = getAvailableDataSize();
-            memcpy(other._producer, _consumer, avl_data_size);
+            ::memcpy(other._producer, _consumer, avl_data_size);
             other._producer += avl_data_size;
         }
 
         void copyTo(Buffer& other) const
         {
             int avl_data_size = getAvailableDataSize();
-            memcpy(other._producer, _consumer, avl_data_size);
+            ::memcpy(other._producer, _consumer, avl_data_size);
             other._producer += avl_data_size;
         }
 
@@ -229,7 +229,7 @@ class Buffer
             if (likely(_base != _consumer))
             {
                 int sz = getAvailableDataSize();
-                memmove(_base, _consumer, sz);
+                ::memcpy(_base, _consumer, sz);
                 _consumer = _base;
                 _producer = _base + sz;
             }

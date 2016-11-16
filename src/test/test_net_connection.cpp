@@ -31,12 +31,13 @@ class Demo : public WhenReceivePacket
 
 int main(int argc, char** argv)
 {
-    global::small_buffer_pool_init(1024, 1024);
-    global::large_buffer_pool_init(8192, 8192);
+    global::small_buffer_pool_init(128, 102400);
+    //global::large_buffer_pool_init(8192, 8192);
 
     Demo demo(atoi(argv[1]));
     NetManager net_manager(&demo);
-    net_manager.setIdleTimeout(1);
+    //net_manager.setIdleTimeout(1);
+    //net_manager.setWriteBufferBaseSize(131072);
     net_manager.startAcceptor(9000);
     net_manager.run();
 }

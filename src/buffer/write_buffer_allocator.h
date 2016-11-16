@@ -150,6 +150,8 @@ class WriteBufferAllocator
             abort();
         }
 
+        int getBaseSize() const { return _base_size; }
+
         WriteBufferAllocator::Deallocator* getDeallocator() { return &_deallocator; }
 
         void printInfo()
