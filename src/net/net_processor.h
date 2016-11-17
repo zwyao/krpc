@@ -154,6 +154,7 @@ class NetProcessor : public CallbackObj
             }
         }
 
+        // 被动接受链接
         // thread not safe, but in loop
         inline void addDynamicConnection(TcpSocket* sock)
         {
@@ -184,7 +185,7 @@ class NetProcessor : public CallbackObj
             }
         }
 
-        // 外部传进来的conn
+        // 系统启动时
         // thread not safe, but in loop
         inline int addStaticConnection(NetConnection* conn, int event = evnet::EV_IO_READ)
         {

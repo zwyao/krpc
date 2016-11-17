@@ -192,16 +192,9 @@ int IOBuffer::write(int fd, bool& null_loop)
             _buffer_entry_cache.put(entry);
             ++i;
         }
-        if (_buffer_list.size() > 0)
-            fprintf(stderr, "writev: %d:%d++++++++++++++++++++++++++++++++++++%d:%d\n",
-                    sendv_size,
-                    vec_idx,
-                    _buffer_list.size(),
-                    nwrite);
-
         return nwrite;
     }
-    else
+    else if (nwrite > 0) // 发送了部分数据
     {
         int nbytes = nwrite;
         BufferList::BufferEntry* entry = _buffer_list.front();
@@ -214,18 +207,26 @@ int IOBuffer::write(int fd, bool& null_loop)
             entry = _buffer_list.front();
         }
 
-        if (nbytes > 0)
-            entry->buffer.consume_unsafe(nbytes);
+        entry->buffer.consume_unsafe(nbytes);
+        /*
+        if (_buffer_list.size() == 1)
+            entry->buffer.compact();
+        */
 
+        /*
         if (_buffer_list.size() > 0)
-            fprintf(stderr, "writev: %d:%d------------------------------------%d:%d\n",
+            fprintf(stderr, "writev: %d:%d------------------------------------%d:%d:%d\n",
                     sendv_size,
                     vec_idx,
                     _buffer_list.size(),
-                    nwrite);
+                    nwrite,
+                    will_send_size);
+                    */
 
-        return nwrite >= 0 ? nwrite : (errno > 0 ? -errno : errno);
+        return nwrite;
     }
+
+    return nwrite >= 0 ? nwrite : (errno > 0 ? -errno : errno);
 }
 
 /*

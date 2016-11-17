@@ -56,7 +56,8 @@ void* send(void* arg)
     len += 8;
 
     int i = 0;
-    while (i < g_count)
+    //while (i < g_count)
+    while (true)
     {
         *((unsigned int*)(buffer+4)) = htonl(g_channel_id_send);
         ++g_channel_id_send;
@@ -90,7 +91,8 @@ void* recv(void* arg)
     int have = 0;
 
     int i = 0;
-    while (i < g_count)
+    //while (i < g_count)
+    while (true)
     {
         int ret = ::read(fd, p, buffer_size-have);
         if (ret > 0)

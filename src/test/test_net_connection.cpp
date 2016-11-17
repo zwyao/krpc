@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
     Demo demo(atoi(argv[1]));
     NetManager net_manager(&demo);
-    //net_manager.setIdleTimeout(1);
+    net_manager.setIdleTimeout(1);
     //net_manager.setWriteBufferBaseSize(131072);
     net_manager.startAcceptor(9000);
     net_manager.run();

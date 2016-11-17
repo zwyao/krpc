@@ -267,9 +267,7 @@ void NetProcessor::send_pending_data()
             delete entry;
         }
     }
-
-    if (count > g_count)
-        g_count = count;
+    g_count = count;
 }
 
 void NetProcessor::process_pending_connection()
@@ -308,7 +306,7 @@ void NetProcessor::TimeWheel::check()
     _timedout_idx = (_timedout_idx+1) % _size;
 
     fprintf(stderr, "%d:%d:%d\n", _current_idx, _timedout_idx, _size);
-    fprintf(stderr, "++++++++++++++++++%d\n", g_count);
+    fprintf(stderr, "++++++++++++++++++ last queue length %d\n", g_count);
     _net_processor->_write_buffer_allocator.printInfo();
     TimeWheelList& list = _wheel[_timedout_idx];
     while (list.empty() == false)
