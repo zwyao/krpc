@@ -114,15 +114,14 @@ void* recv(void* arg)
                 ++i;
             }
 
-            if (data > buffer && have > 0)
+            assert(p - data == have);
+            if (data < p)
             {
-                assert(p - data == have);
                 memcpy(buffer, data, have);
                 p = buffer+have;
             }
-            else if (data > buffer)
+            else
             {
-                assert(p == data);
                 p = buffer;
             }
         }
@@ -140,6 +139,7 @@ int main(int argc, char** argv)
 
     TcpSocket sock;
     int ret = sock.connect(target);
+    sock.setNoDelay(0);
     assert(ret == 1);
 
     struct timeval tv1, tv2;

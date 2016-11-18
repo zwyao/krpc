@@ -3,6 +3,9 @@
 
 #include "locker.h"
 #include "defines.h"
+#include "buffer_list.h"
+
+#include <assert.h>
 
 namespace knet
 {
@@ -38,6 +41,68 @@ class ConnIdGenerator
         int _conn_ids[MAX_CONNECTION_EACH_MANAGER];
         int _conn_id_num;
         ConnIDLocker _id_locker;
+};
+
+class NetConnection;
+class ConnIdMap
+{
+    public:
+        ConnIdMap();
+        ~ConnIdMap() { }
+
+        NetConnection* get(int id)
+        {
+            // 包含负值的检查
+            assert((unsigned int)id < MAX_CONNECTION_EACH_MANAGER);
+            return _connections[id];
+        }
+
+        void set(int id, NetConnection* conn)
+        {
+            assert(_connections[id] == 0);
+            _connections[id] = conn;
+        }
+
+        void erase(int id, NetConnection* conn)
+        {
+            assert(_connections[id] == conn);
+            _connections[id] = 0;
+        }
+
+    private:
+        void init_conn();
+
+    private:
+        NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
+
+};
+
+class ConnSendList
+{
+    private:
+        struct SendList
+        {
+            util::BufferList::TList _connections[MAX_CONNECTION_EACH_MANAGER];
+            int id[256];
+            int id_size;
+        };
+
+        typedef util::SpinLocker PendingDataLocker;
+
+    public:
+        ConnSendList():_list(&_one) { }
+        ~ConnSendList() { }
+
+        void put(util::BufferList::BufferEntry* entry)
+        {
+            util::Guard<PendingDataLocker> m(_pending_data_locker);
+        }
+
+    private:
+        PendingDataLocker _pending_data_locker;
+        SendList _one;
+        SendList _two;
+        SendList* _list;
 };
 
 }

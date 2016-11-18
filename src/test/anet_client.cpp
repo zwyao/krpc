@@ -56,7 +56,8 @@ void* send(void* arg)
     len += 16;
 
     int i = 0;
-    while (i < g_count)
+    //while (i < g_count)
+    while (true)
     {
         *((unsigned int*)(buffer+4)) = htonl(g_channel_id_send);
         ++g_channel_id_send;
@@ -90,7 +91,8 @@ void* recv(void* arg)
     int have = 0;
 
     int i = 0;
-    while (i < g_count)
+    //while (i < g_count)
+    while (true)
     {
         int ret = ::read(fd, p, buffer_size-have);
         if (ret > 0)
@@ -112,15 +114,14 @@ void* recv(void* arg)
                 ++i;
             }
 
-            if (data > buffer && have > 0)
+            assert(p - data == have);
+            if (data < p)
             {
-                assert(p - data == have);
                 memcpy(buffer, data, have);
                 p = buffer+have;
             }
-            else if (data > buffer)
+            else
             {
-                assert(p == data);
                 p = buffer;
             }
         }
@@ -138,6 +139,7 @@ int main(int argc, char** argv)
 
     TcpSocket sock;
     int ret = sock.connect(target);
+    sock.setNoDelay(0);
     assert(ret == 1);
 
     struct timeval tv1, tv2;

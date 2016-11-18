@@ -267,16 +267,14 @@ class NetProcessor : public CallbackObj
         inline void attachConnection(NetConnection* conn, int event)
         {
             int id = conn->myID();
-            assert(_connections[id] == 0);
-            _connections[id] = conn;
+            _conn_id_map.set(id, conn);
             conn->join(_reactor, event);
         }
 
         inline void detachConnection(NetConnection* conn)
         {
             int id = conn->myID();
-            assert(conn == _connections[id]);
-            _connections[id] = 0;
+            _conn_id_map.erase(id, conn);
             conn->close();
         }
 
@@ -289,12 +287,10 @@ class NetProcessor : public CallbackObj
             session.close();
         }
 
+        // safe in loop
         inline int send_by_me(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
-            // 包含负值的检查
-            assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
-
-            NetConnection* conn = _connections[conn_id];
+            NetConnection* conn = _conn_id_map.get(conn_id);
             if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
 
             char* ptr = buffer.getBuffer();
@@ -308,6 +304,7 @@ class NetProcessor : public CallbackObj
             return conn->send(buffer, _write_buffer_allocator);
         }
 
+        // safe with lock
         inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
         {
             char* ptr = buffer.getBuffer();
@@ -341,6 +338,7 @@ class NetProcessor : public CallbackObj
         TimeWheel _idle_queue;
         util::IDCreator _mask_generator;
         ConnIdGenerator _conn_id_gen;
+        ConnIdMap _conn_id_map;
         util::WriteBufferAllocator _write_buffer_allocator;
 
         const pid_t _thread_id;
@@ -351,8 +349,6 @@ class NetProcessor : public CallbackObj
         int _conn_empty_list_num;
         int _conn_empty_list_size;
 
-        // connection的id到NetConnection的映射表
-        NetConnection* _connections[MAX_CONNECTION_EACH_MANAGER];
         NetProcessor::Session _session_set[MAX_CONNECTION_EACH_MANAGER];
 
         PendingDataLocker _pending_data_locker;

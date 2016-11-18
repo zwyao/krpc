@@ -257,7 +257,7 @@ void NetProcessor::send_pending_data()
         // 包含负值的检查
         assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
 
-        NetConnection* conn = _connections[conn_id];
+        NetConnection* conn = _conn_id_map.get(conn_id);
         if (likely(conn != 0 && conn->myMask() == mask))
         {
             conn->send(entry, _write_buffer_allocator);
@@ -307,7 +307,7 @@ void NetProcessor::TimeWheel::check()
 
     fprintf(stderr, "%d:%d:%d\n", _current_idx, _timedout_idx, _size);
     fprintf(stderr, "++++++++++++++++++ last queue length %d\n", g_count);
-    _net_processor->_write_buffer_allocator.printInfo();
+    //_net_processor->_write_buffer_allocator.printInfo();
     TimeWheelList& list = _wheel[_timedout_idx];
     while (list.empty() == false)
     {
@@ -334,8 +334,6 @@ void NetProcessor::init_conn_list()
 
     _conn_empty_list_num = num;
     _conn_empty_list_size = num;
-
-    memset(_connections, 0, sizeof(_connections));
 }
 
 void NetProcessor::init_session()
