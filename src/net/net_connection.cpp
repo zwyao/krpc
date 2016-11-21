@@ -1,7 +1,6 @@
 #include "net_connection.h"
 
-namespace knet
-{
+namespace knet { namespace net {
 
 void NetConnection::handleReadEvent()
 {
@@ -53,7 +52,7 @@ void NetConnection::handleTimeoutEvent()
 
 void NetConnection::recv_connection()
 {
-    knet::TcpSocket* const sock = _sock->accept();
+    net::TcpSocket* const sock = _sock->accept();
     if (likely(sock != 0))
     {
         _cb->handleEvent(EVENT_NEW_CONNECTION, (void*)sock);
@@ -158,5 +157,5 @@ void NetConnection::processor(int event, void* data)
     }
 }
 
-}
+}}
 

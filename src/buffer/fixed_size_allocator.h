@@ -5,8 +5,7 @@
 #include "buffer.h"
 #include "locker.h"
 
-namespace util
-{
+namespace knet { namespace util {
 
 class FixedSizeAllocator : public Allocator
 {
@@ -67,6 +66,6 @@ class FixedSizeAllocator : public Allocator
         util::MutexLocker _mutex_locker;
 };
 
-}
+}}
 
 #endif

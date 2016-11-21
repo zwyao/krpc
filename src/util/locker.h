@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 class MutexLocker
 {
@@ -91,7 +90,7 @@ class Guard
         T& _locker;
 };
 
-}
+}}
 
 #endif
 

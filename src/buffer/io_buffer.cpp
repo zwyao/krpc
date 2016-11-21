@@ -5,8 +5,7 @@
 #include <sys/uio.h>
 #include <limits.h>
 
-namespace global
-{
+namespace knet { namespace global {
 
 int g_read_io_buffer_init = 1048576;
 
@@ -36,12 +35,12 @@ util::Buffer getLargeBuffer(int size)
     return buffer;
 }
 
-}
+}}
 
 namespace 
 {
 
-inline int read_data(int fd, int max_read, util::Buffer& buffer)
+inline int read_data(int fd, int max_read, knet::util::Buffer& buffer)
 {
     char extrabuf[65536];
     struct iovec read_vec[2];
@@ -66,7 +65,7 @@ inline int read_data(int fd, int max_read, util::Buffer& buffer)
         int total_size = buffer.capacity() + nread;
         int mcp_size1 = buffer.getAvailableDataSize() + max_read;
 
-        util::Buffer new_buffer(total_size);
+        knet::util::Buffer new_buffer(total_size);
 
         memcpy(new_buffer.getBuffer(), buffer.consumer(), mcp_size1);
         memcpy(new_buffer.getBuffer()+mcp_size1, extrabuf, nread-max_read);
@@ -80,8 +79,7 @@ inline int read_data(int fd, int max_read, util::Buffer& buffer)
 
 }
 
-namespace util
-{
+namespace knet { namespace util {
 
 FixedSizeAllocator IOBuffer::_small_buffer_allocator;
 FixedSizeAllocator IOBuffer::_large_buffer_allocator;
@@ -363,5 +361,5 @@ int IOBuffer::read(int fd, int max_read, Buffer& buffer)
     return nread >= 0 ? nread : (errno > 0 ? -errno : errno);
 }
 
-}
+}}
 

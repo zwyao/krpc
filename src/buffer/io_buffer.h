@@ -8,8 +8,7 @@
 
 #include <assert.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 class IOBuffer
 {
@@ -77,7 +76,7 @@ class IOBuffer
         static int  _large_buffer_size;
 };
 
-}
+}}
 
 #endif
 

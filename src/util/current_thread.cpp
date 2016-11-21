@@ -3,8 +3,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 namespace detail
 {
@@ -20,5 +19,5 @@ pid_t cacheTid()
 
 }
 
-}
+}}
 

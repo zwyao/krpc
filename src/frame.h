@@ -32,8 +32,8 @@ class DefaultBinaryMsg : public FrameMsg
 
         virtual ~DefaultBinaryMsg();
 
-        virtual int unserialize(util::Buffer* buffer);
-        virtual int serialize(util::Buffer* buffer);
+        virtual int unserialize(knet::util::Buffer* buffer);
+        virtual int serialize(knet::util::Buffer* buffer);
 
     private:
         int _stream_id;

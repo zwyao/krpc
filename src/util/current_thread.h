@@ -5,8 +5,7 @@
 
 #include <unistd.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 
 namespace detail
@@ -23,15 +22,15 @@ namespace CurrentThread
 
 inline pid_t getTid()
 {
-    if (likely(util::detail::cached_tid != 0))
-        return util::detail::cached_tid;
+    if (likely(knet::util::detail::cached_tid != 0))
+        return knet::util::detail::cached_tid;
 
-    return util::detail::cacheTid();
+    return knet::util::detail::cacheTid();
 }
 
 }
 
-}
+}}
 
 #endif
 

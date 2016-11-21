@@ -5,8 +5,7 @@
 
 #include <stdio.h>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 int Acceptor::listen()
 {
@@ -25,9 +24,9 @@ int Acceptor::listen()
         return -1;
     }
 
-    ret = _cb->handleEvent(knet::EVENT_LISTEN, (void*)sock);
+    ret = _cb->handleEvent(net::EVENT_LISTEN, (void*)sock);
     return ret == 0 ? 0 : -1;
 }
 
-}
+}}
 

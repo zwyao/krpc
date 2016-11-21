@@ -10,8 +10,7 @@
 #include "ev.h"
 #include "ev_io.h"
 
-namespace knet
-{
+namespace knet { namespace net {
 
 /*
  * connection 完全由 NetProcessor 管理
@@ -40,8 +39,8 @@ class NetConnection
             assert(_io != 0);
         }
 
-        NetConnection(knet::TcpSocket* sock,
-                knet::CallbackObj* cb,
+        NetConnection(TcpSocket* sock,
+                net::CallbackObj* cb,
                 NetConnection::State state):
             _reactor(0),
             _io(evnet::EvIo::create()),
@@ -70,10 +69,10 @@ class NetConnection
         void handleErrorEvent();
         void handleTimeoutEvent();
 
-        inline void init(knet::TcpSocket* sock,
-                knet::CallbackObj* cb,
+        inline void init(net::TcpSocket* sock,
+                net::CallbackObj* cb,
                 int id,
-                int mask,
+                int64_t mask,
                 NetConnection::State state)
         {
             _sock = sock;
@@ -112,7 +111,7 @@ class NetConnection
                 _reactor = 0;
             }
             //防止竞态条件: os可能重用正在关闭的fd
-            knet::TcpSocket* const sock = _sock;
+            TcpSocket* const sock = _sock;
             _sock = 0;
 
             sock->close();
@@ -128,12 +127,12 @@ class NetConnection
         inline bool isGood() const { return (_sock && _sock->isGood()); }
         inline bool isListen() const { return _state == NetConnection::LISTEN; }
         inline int myID() const { return _id; }
-        inline int myMask() const { return _mask; }
+        inline int64_t myMask() const { return _mask; }
 
-        inline void setSocket(knet::TcpSocket* sock) { _sock = sock; }
-        inline void setCallbackObj(knet::CallbackObj* cb) { _cb = cb; }
+        inline void setSocket(net::TcpSocket* sock) { _sock = sock; }
+        inline void setCallbackObj(net::CallbackObj* cb) { _cb = cb; }
         inline void setID(int id) { _id = id; }
-        inline void setMask(int mask) { _mask = mask; }
+        inline void setMask(int64_t mask) { _mask = mask; }
 
         inline int send(util::Buffer& buffer, util::WriteBufferAllocator& allocator)
         {
@@ -205,10 +204,10 @@ class NetConnection
         evnet::EvIo* _io;
 
         //own _sock
-        knet::TcpSocket* _sock;
-        knet::CallbackObj* _cb;
+        TcpSocket* _sock;
+        CallbackObj* _cb;
         int _id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
-        int _mask;
+        int64_t _mask;
 
         NetConnection::State _state;
         NetConnection::Error _error;
@@ -222,7 +221,7 @@ class NetConnection
         util::ListOp::ListNode list_node;
 };
 
-}
+}}
 
 #endif
 

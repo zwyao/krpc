@@ -7,8 +7,7 @@
 
 #include <assert.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 class WriteBufferAllocator
 {
@@ -172,7 +171,7 @@ class WriteBufferAllocator
         Deallocator _deallocator;
 };
 
-}
+}}
 
 #endif
 

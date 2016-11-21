@@ -9,14 +9,13 @@
 
 static int g_count = 0;
 
-namespace knet
-{
+namespace knet { namespace net {
 
 namespace detail 
 {
 
-util::IDCreator g_processor_id_creator(0);
-knet::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
+knet::util::IDCreator g_processor_id_creator;
+knet::net::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
@@ -27,10 +26,10 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor,
     _idle_timer(0),
     _processor(processor),
     _idle_queue(),
-    _mask_generator(-1),
+    _mask_generator(),
     _conn_id_gen(),
     _write_buffer_allocator(write_buffer_size),
-    _thread_id(util::CurrentThread::getTid()),
+    _thread_id(knet::util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(64*1024*1024),
     _conn_empty_list(0)
@@ -150,7 +149,7 @@ int NetProcessor::process(int code, void* data)
     return 0;
 }
 
-int NetProcessor::process_read(NetProcessor::Session& session, util::Buffer& buffer)
+int NetProcessor::process_read(NetProcessor::Session& session, knet::util::Buffer& buffer)
 {
     int pack_num = 0;
     int data_size = 0;
@@ -167,7 +166,7 @@ int NetProcessor::process_read(NetProcessor::Session& session, util::Buffer& buf
     return 0;
 }
 
-int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffer)
+int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer& buffer)
 {
     switch (session._state)
     {
@@ -210,7 +209,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
         {
             if (buffer.getAvailableDataSize() >= session._frame_size)
             {
-                util::Buffer pack = util::IOBuffer::getSmallBuffer(session._frame_size);
+                knet::util::Buffer pack = knet::util::IOBuffer::getSmallBuffer(session._frame_size);
 
                 memcpy(pack.producer(), buffer.consumer(), session._frame_size);
 
@@ -238,21 +237,21 @@ int NetProcessor::check_data(NetProcessor::Session& session, util::Buffer& buffe
 
 void NetProcessor::send_pending_data()
 {
-    util::BufferList::TList pending_data;
+    knet::util::BufferList::TList pending_data;
     {
-        util::Guard<PendingDataLocker> m(_pending_data_locker);
+        knet::util::Guard<PendingDataLocker> m(_pending_data_locker);
         pending_data.swap(_pending_data_list);
     }
 
     int count = 0;
     while (!pending_data.empty())
     {
-        util::BufferList::BufferEntry* entry = pending_data.front();
+        knet::util::BufferList::BufferEntry* entry = pending_data.front();
         pending_data.pop_front();
         ++count;
 
         int conn_id = entry->target.conn_id;
-        int mask = entry->target.mask;
+        int64_t mask = entry->target.mask;
 
         // 包含负值的检查
         assert((unsigned int)conn_id < MAX_CONNECTION_EACH_MANAGER);
@@ -274,7 +273,7 @@ void NetProcessor::process_pending_connection()
 {
     PendingConnectingList pending_conn;
     {
-        util::Guard<PendingConnectingLocker> m(_pending_conn_locker);
+        knet::util::Guard<PendingConnectingLocker> m(_pending_conn_locker);
         pending_conn.swap(_pending_conn_list);
     }
 
@@ -312,7 +311,7 @@ void NetProcessor::TimeWheel::check()
     while (list.empty() == false)
     {
         NetConnection* conn = list.front();
-        fprintf(stderr, "timeout: %d:%d\n", conn->myID(), conn->myMask());
+        fprintf(stderr, "timeout: %d:%ld\n", conn->myID(), conn->myMask());
         list.pop_front();
         _net_processor->close_session(conn);
         _net_processor->delConnection(conn);
@@ -360,5 +359,5 @@ void NetProcessor::setup_timer(int timeout)
     }
 }
 
-}
+}}
 

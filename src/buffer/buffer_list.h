@@ -4,8 +4,7 @@
 #include "buffer.h"
 #include "list.h"
 
-namespace util
-{
+namespace knet { namespace util {
 
 namespace BufferList
 {
@@ -26,7 +25,7 @@ struct BufferEntry
 {
     Buffer buffer;
     Target target;
-    util::ListOp::ListNode list_node;
+    knet::util::ListOp::ListNode list_node;
 
     BufferEntry():
         target(-1, -1)
@@ -40,7 +39,7 @@ struct BufferEntry
     }
 };
 
-typedef util::List<BufferEntry, &BufferEntry::list_node> TList;
+typedef knet::util::List<BufferEntry, &BufferEntry::list_node> TList;
 
 class BufferEntryCache
 {
@@ -82,7 +81,7 @@ class BufferEntryCache
 
 }
 
-}
+}}
 
 #endif
 

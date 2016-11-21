@@ -7,8 +7,7 @@
 
 #include <new>
 
-namespace util
-{
+namespace knet { namespace util {
 
 template <typename T>
 class ObjectAllocator
@@ -106,7 +105,7 @@ void ObjectAllocator<T>::deallocate(T* p)
     _allocator->deallocate((char*)p);
 }
 
-}
+}}
 
 #endif
 

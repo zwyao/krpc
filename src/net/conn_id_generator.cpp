@@ -2,8 +2,7 @@
 
 #include <string.h>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 ConnIdGenerator::ConnIdGenerator()
 {
@@ -28,5 +27,5 @@ void ConnIdMap::init_conn()
     memset(_connections, 0, sizeof(_connections));
 }
 
-}
+}}
 

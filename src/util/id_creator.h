@@ -3,29 +3,24 @@
 
 #include "atomic.h"
 
-namespace util
-{
+namespace knet { namespace util {
 
 class IDCreator
 {
     public:
-        explicit IDCreator(int init_id = -1)
-        {
-            atomic_set(&_id, init_id);
-        }
-
+        IDCreator() { }
         ~IDCreator() { }
 
-        int nextID()
+        int64_t nextID()
         {
-            return atomic_inc_return(&_id);
+            return _id.getAndAdd(1);
         }
 
     private:
-        atomic_t _id;
+        AtomicInt64 _id;
 };
 
-}
+}}
 
 #endif
 

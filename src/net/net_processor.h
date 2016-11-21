@@ -14,8 +14,7 @@
 
 #include <string.h>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 class WhenReceivePacket;
 class NetManager;
@@ -56,7 +55,7 @@ class NetProcessor : public CallbackObj
             public:
                 State _state;
                 int _conn_id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
-                int _mask;
+                int64_t _mask;
                 int _frame_size;
                 unsigned int _channel_id;
         };
@@ -220,7 +219,7 @@ class NetProcessor : public CallbackObj
             }
         }
 
-        inline int send(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int send(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
         {
             if (_thread_id == util::CurrentThread::getTid())
                 return send_by_me(conn_id, mask, channel_id, buffer);
@@ -229,7 +228,7 @@ class NetProcessor : public CallbackObj
         }
 
         // for test
-        inline int sendAsyn(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int sendAsyn(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
         {
             return send_by_queue(conn_id, mask, channel_id, buffer);
         }
@@ -288,7 +287,7 @@ class NetProcessor : public CallbackObj
         }
 
         // safe in loop
-        inline int send_by_me(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_me(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
         {
             NetConnection* conn = _conn_id_map.get(conn_id);
             if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
@@ -305,7 +304,7 @@ class NetProcessor : public CallbackObj
         }
 
         // safe with lock
-        inline int send_by_queue(int conn_id, int mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_queue(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
         {
             char* ptr = buffer.getBuffer();
             assert(buffer.consumer() - ptr == 8);
@@ -319,8 +318,12 @@ class NetProcessor : public CallbackObj
                 new (std::nothrow) util::BufferList::BufferEntry(buffer, conn_id, mask);
             if (likely(entry != 0))
             {
-                util::Guard<PendingDataLocker> m(_pending_data_locker);
-                _pending_data_list.push_back(entry);
+                {
+                    util::Guard<PendingDataLocker> m(_pending_data_locker);
+                    _pending_data_list.push_back(entry);
+                }
+                //TODO
+                //evnet::ev_wakeup(_reactor);
                 return 0;
             }
 
@@ -364,12 +367,12 @@ class NetProcessor : public CallbackObj
 namespace detail
 {
 
-extern util::IDCreator g_processor_id_creator;
-extern knet::NetProcessor* g_net_processors[NET_MANAGER_NUM];
+extern knet::util::IDCreator g_processor_id_creator;
+extern knet::net::NetProcessor* g_net_processors[NET_MANAGER_NUM];
 
 }
 
-}
+}}
 
 #endif
 

@@ -3,8 +3,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 int TcpSocket::listen(int port)
 {
@@ -176,5 +175,5 @@ void TcpSocket::close()
     //globals().openNetFds.Update(-1);
 }
 
-}
+}}
 

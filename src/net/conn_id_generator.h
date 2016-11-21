@@ -7,8 +7,7 @@
 
 #include <assert.h>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 class ConnIdGenerator
 {
@@ -77,35 +76,7 @@ class ConnIdMap
 
 };
 
-class ConnSendList
-{
-    private:
-        struct SendList
-        {
-            util::BufferList::TList _connections[MAX_CONNECTION_EACH_MANAGER];
-            int id[256];
-            int id_size;
-        };
-
-        typedef util::SpinLocker PendingDataLocker;
-
-    public:
-        ConnSendList():_list(&_one) { }
-        ~ConnSendList() { }
-
-        void put(util::BufferList::BufferEntry* entry)
-        {
-            util::Guard<PendingDataLocker> m(_pending_data_locker);
-        }
-
-    private:
-        PendingDataLocker _pending_data_locker;
-        SendList _one;
-        SendList _two;
-        SendList* _list;
-};
-
-}
+}}
 
 #endif
 

@@ -6,8 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 class FixedSizeAllocator::ChunkAllocator
 {
@@ -387,4 +386,5 @@ FixedSizeAllocator::ChunkAllocator* FixedSizeAllocator::findVicinity(char* ptr)
     return 0;
 }
 
-}
+}}
+

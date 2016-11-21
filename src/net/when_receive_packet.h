@@ -4,8 +4,7 @@
 #include "net_pipe.h"
 #include "buffer.h"
 
-namespace knet
-{
+namespace knet { namespace net {
 
 // 无状态类
 class WhenReceivePacket
@@ -18,7 +17,7 @@ class WhenReceivePacket
         virtual int process(NetPipe& pipe, util::Buffer& pack) = 0;
 };
 
-}
+}}
 
 #endif
 

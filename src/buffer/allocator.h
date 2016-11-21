@@ -1,8 +1,7 @@
 #ifndef __ALLOCATOR_H__
 #define __ALLOCATOR_H__
 
-namespace util
-{
+namespace knet { namespace util {
 
 class Allocator
 {
@@ -15,7 +14,7 @@ class Allocator
         virtual int   getBufferSize()  = 0;
 };
 
-}
+}}
 
 #endif
 

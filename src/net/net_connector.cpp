@@ -1,7 +1,6 @@
 #include "net_connector.h"
 
-namespace knet
-{
+namespace knet { namespace net {
 
 TcpSocket* NetConnector::connect(const ServerLocation& location)
 {
@@ -18,5 +17,5 @@ TcpSocket* NetConnector::connect(const ServerLocation& location)
     }
 }
 
-}
+}}
 

@@ -8,8 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 typedef void (*buffer_deallocator) (char* ptr);
 
@@ -248,7 +247,7 @@ class Buffer
         static DonothingDeallocator _donothing_deallocator;
 };
 
-}
+}}
 
 #endif
 

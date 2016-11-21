@@ -1,7 +1,7 @@
 #ifndef __BITS_H__
 #define __BITS_H__
 
-namespace util { namespace bits {
+namespace knet { namespace util { namespace bits {
 
 inline int change2Pow(unsigned int n)
 {
@@ -12,7 +12,7 @@ inline int change2Pow(unsigned int n)
     return n + 1;
 }
 
-}}
+}}}
 
 #endif
 

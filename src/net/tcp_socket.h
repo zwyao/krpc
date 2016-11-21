@@ -18,8 +18,7 @@ extern "C"
 
 #include <string>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 struct ServerLocation
 {
@@ -110,7 +109,7 @@ class TcpSocket
         int _fd;
 };
 
-}
+}}
 
 #endif
 

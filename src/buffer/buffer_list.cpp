@@ -1,7 +1,6 @@
 #include "buffer_list.h"
 
-namespace util
-{
+namespace knet { namespace util {
 
 namespace BufferList
 {
@@ -17,5 +16,5 @@ void BufferEntryCache::init()
 
 }
 
-}
+}}
 

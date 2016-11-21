@@ -3,8 +3,7 @@
 
 #include <new>
 
-namespace knet
-{
+namespace knet { namespace net {
 
 /* 用来让CBMethodCall继承 */
 class CBMethodBase
@@ -86,7 +85,7 @@ inline void SET_HANDLE(T* obj, typename CBMethodCall<T>::MethodPtr method)
     obj->setHandle(obj, method);
 }
 
-}
+}}
 
 #endif
 

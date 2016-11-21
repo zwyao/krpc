@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-namespace util
-{
+namespace knet { namespace util {
 
 class ListOp
 {
@@ -150,7 +149,7 @@ class List
 template <typename T, ListOp::ListNode T::*list_node>
 ListOp::ListNode* const List<T, list_node>::_node_offset = &(((T*)(0))->*list_node);
 
-}
+}}
 
 #endif
 

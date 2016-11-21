@@ -1,8 +1,7 @@
 #ifndef __NET_EVENT_H__
 #define __NET_EVENT_H__
 
-namespace knet
-{
+namespace knet { namespace net {
 
 enum EventCode {
     EVENT_NONE = 1,
@@ -20,7 +19,7 @@ enum EventCode {
     EVENT_TIMEOUT
 };
 
-}
+}}
 
 #endif
 

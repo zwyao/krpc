@@ -24,8 +24,7 @@
  * writebuffer维护一个发送buffer列表
  *
  */
-namespace knet
-{
+namespace knet { namespace net {
 
 class WhenReceivePacket;
 class NetProcessor;
@@ -68,7 +67,7 @@ class NetManager
         int _write_buffer_size;
 };
 
-}
+}}
 
 #endif
 

@@ -3,8 +3,7 @@
 
 #include "callback_object.h"
 
-namespace knet
-{
+namespace knet { namespace net {
 
 class NetProcessor;
 class AcceptAdaptor: public CallbackObj
@@ -26,7 +25,7 @@ class AcceptAdaptor: public CallbackObj
 
 };
 
-}
+}}
 
 #endif
 

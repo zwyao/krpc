@@ -5,12 +5,12 @@
 namespace krpc
 {
 
-int DefaultBinaryMsg::unserialize(util::Buffer* buffer)
+int DefaultBinaryMsg::unserialize(knet::util::Buffer* buffer)
 {
     return 0;
 }
 
-int DefaultBinaryMsg::serialize(util::Buffer* buffer)
+int DefaultBinaryMsg::serialize(knet::util::Buffer* buffer)
 {
     return 0;
 }
