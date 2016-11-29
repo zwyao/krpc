@@ -2,7 +2,6 @@
 #define __NOTIFIER_H__
 
 #include "callback_object.h"
-#include "io_buffer.h"
 
 #include <stdint.h>
 #include <unistd.h>
@@ -30,7 +29,6 @@ class Notifier : public CallbackObj
     private:
         NetProcessor* const _net_processor;
         int _fd;
-        util::IOBuffer _out_buffer;
 };
 
 }}

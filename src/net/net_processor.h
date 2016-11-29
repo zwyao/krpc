@@ -2,6 +2,7 @@
 #define __NET_PROCESSOR_H__
 
 #include "net_connection.h"
+#include "notifier.h"
 #include "id_creator.h"
 #include "conn_id_generator.h"
 #include "callback_object.h"
@@ -318,12 +319,19 @@ class NetProcessor : public CallbackObj
                 new (std::nothrow) util::BufferList::BufferEntry(buffer, conn_id, mask);
             if (likely(entry != 0))
             {
+                int size = 0;
                 {
                     util::Guard<PendingDataLocker> m(_pending_data_locker);
                     _pending_data_list.push_back(entry);
+                    size = _pending_data_list.size();
                 }
-                //TODO
-                //evnet::ev_wakeup(_reactor);
+
+                if (size == 1)
+                {
+                    //TODO
+                    //evnet::ev_wakeup(_reactor);
+                    _notifier.notify();
+                }
                 return 0;
             }
 
@@ -338,9 +346,10 @@ class NetProcessor : public CallbackObj
         evnet::EvLoop* const _reactor;
         evnet::EvTimer* _idle_timer;
         WhenReceivePacket* const _processor;
+        ConnIdGenerator _conn_id_gen; //addStaticConnection在启动时候回调用，应该在最前面初始化
+        Notifier _notifier;
         TimeWheel _idle_queue;
         util::IDCreator _mask_generator;
-        ConnIdGenerator _conn_id_gen;
         ConnIdMap _conn_id_map;
         util::WriteBufferAllocator _write_buffer_allocator;
 

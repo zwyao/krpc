@@ -30,7 +30,7 @@ void Notifier::start()
     TcpSocket* const sock = new TcpSocket(_fd);
     if (sock)
     {
-        //_net_processor->addConnection(new NetConnection(sock, this, NetConnection::SEND_NOTIFY));
+        _net_processor->addStaticConnection(new NetConnection(sock, this, NetConnection::NOTIFIER));
     }
     else
     {
@@ -38,6 +38,7 @@ void Notifier::start()
         fprintf(stderr, "Unable to start notify socket\n");
         abort();
     }
+    fprintf(stderr, "notifier start ok\n");
 }
 
 int Notifier::notified(int code, void* data)
@@ -46,8 +47,6 @@ int Notifier::notified(int code, void* data)
     (void)data;
     uint64_t one = 0;
     ::read(_fd, &one, sizeof(one));
-
-    //_net_processor->sendPendingData();
     return 0;
 }
 

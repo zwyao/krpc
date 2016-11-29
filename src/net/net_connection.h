@@ -22,6 +22,7 @@ class NetConnection
         {
             LISTEN = 1,
             NORMAL,
+            NOTIFIER,
             CONNECTING,
         };
 
@@ -90,7 +91,7 @@ class NetConnection
             _io->setEvent(_sock->fd(), event, processor, this);
             _io->addEvent(_reactor, evnet::EV_HIGH_PRI);
 
-            if (likely(_state == NetConnection::NORMAL))
+            if (_state == NetConnection::NORMAL)
             {
                 Input input(this, 0);
                 _cb->handleEvent(EVENT_NEW_CONNECTION, (void*)&input);
@@ -185,6 +186,7 @@ class NetConnection
     private:
         void recv_connection();
         void recv_data();
+        void notified();
         void send_data();
         void connecting();
 

@@ -17,6 +17,9 @@ void NetConnection::handleReadEvent()
         case NORMAL:
             recv_data();
             break;
+        case NOTIFIER:
+            notified();
+            break;
         default:
             assert(0);
             break;
@@ -82,6 +85,11 @@ void NetConnection::recv_data()
     {
         _error = NetConnection::NET_ERROR;
     }
+}
+
+void NetConnection::notified()
+{
+    _cb->handleEvent(EVENT_NET_READ, 0);
 }
 
 void NetConnection::send_data()
