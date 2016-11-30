@@ -26,14 +26,13 @@
  */
 namespace knet { namespace net {
 
-class WhenReceivePacket;
+class RawDataHandler;
 class NetProcessor;
 class Acceptor;
 class NetConnector;
 class NetManager
 {
     public:
-        NetManager(WhenReceivePacket* processor);
         ~NetManager();
 
         /*
@@ -50,7 +49,7 @@ class NetManager
 
         // 在startNetProcessor()之前调用下面的set函数
         void setIdleTimeout(int timeout) { _idle_timeout = timeout; }
-        void setWriteBufferBaseSize(int size) { _write_buffer_size = size; }
+        void setSendBufferSize(int size) { _send_buffer_size = size; }
 
         //NetPipe getPipe(const ServerLocation& location);
 
@@ -60,11 +59,11 @@ class NetManager
         Acceptor* _acceptor;
         NetProcessor* _net_processor;
         NetConnector* _connector;
-        WhenReceivePacket* const _request_processor;
+        RawDataHandler* const _data_handler;
         // 空闲链接的timeout，不是收发数据的timeout
         // 秒级
         int _idle_timeout;
-        int _write_buffer_size;
+        int _send_buffer_size;
 };
 
 }}

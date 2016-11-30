@@ -1,21 +1,21 @@
 #include "net_manager.h"
-#include "when_receive_packet.h"
+#include "raw_data_handler.h"
 #include "global.h"
 
 using namespace knet::net;
 using namespace knet::util;
 
-class Demo : public WhenReceivePacket
+class Demo : public RawDataHandler
 {
     public:
         Demo (int sync):_sync(sync) { }
         virtual ~Demo () { }
 
-        virtual int process(NetPipe& pipe, Buffer& pack)
+        virtual int handle(NetPipe& pipe, Buffer& pack)
         {
             //fprintf(stderr, "%s:%d\n", pack.consumer(), pack.getAvailableDataSize());
 
-            Buffer buffer = knet::global::getSmallBuffer(pack.getAvailableDataSize());
+            Buffer buffer = knet::global::getBuffer(pack.getAvailableDataSize());
             memcpy(buffer.producer(), pack.consumer(), pack.getAvailableDataSize());
             buffer.produce_unsafe(pack.getAvailableDataSize());
 
@@ -31,13 +31,12 @@ class Demo : public WhenReceivePacket
 
 int main(int argc, char** argv)
 {
-    knet::global::small_buffer_pool_init(128, 102400);
-    //knet::global::large_buffer_pool_init(8192, 8192);
+    knet::global::buffer_pool_init(128, 102400);
 
     Demo demo(atoi(argv[1]));
     NetManager net_manager(&demo);
     net_manager.setIdleTimeout(1);
-    //net_manager.setWriteBufferBaseSize(131072);
+    //net_manager.setSendBufferSize(131072);
     net_manager.startAcceptor(9000);
     net_manager.run();
 }

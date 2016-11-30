@@ -1,4 +1,5 @@
 #include "io_buffer.h"
+#include "global.h"
 
 #include <unistd.h>
 #include <errno.h>
@@ -9,27 +10,14 @@ namespace knet { namespace global {
 
 int g_read_io_buffer_init = 1048576;
 
-void small_buffer_pool_init(int block_size, int block_count)
+void buffer_pool_init(int block_size, int block_count)
 {
-    util::IOBuffer::small_buffer_pool_init(block_size, block_count);
+    util::IOBuffer::buffer_pool_init(block_size, block_count);
 }
 
-void large_buffer_pool_init(int block_size, int block_count)
+util::Buffer getBuffer(int size)
 {
-    util::IOBuffer::large_buffer_pool_init(block_size, block_count);
-}
-
-util::Buffer getSmallBuffer(int size)
-{
-    util::Buffer buffer = util::IOBuffer::getSmallBuffer(size+8);
-    buffer.produce_unsafe(8);
-    buffer.consume_unsafe(8);
-    return buffer;
-}
-
-util::Buffer getLargeBuffer(int size)
-{
-    util::Buffer buffer = util::IOBuffer::getLargeBuffer(size+8);
+    util::Buffer buffer = util::IOBuffer::getBuffer(size+8);
     buffer.produce_unsafe(8);
     buffer.consume_unsafe(8);
     return buffer;
@@ -81,63 +69,37 @@ inline int read_data(int fd, int max_read, knet::util::Buffer& buffer)
 
 namespace knet { namespace util {
 
-FixedSizeAllocator IOBuffer::_small_buffer_allocator;
-FixedSizeAllocator IOBuffer::_large_buffer_allocator;
+FixedSizeAllocator IOBuffer::_buffer_allocator;
+bool IOBuffer::_buffer_init = false;
+int  IOBuffer::_buffer_size = 4096;
 
-bool IOBuffer::_small_buffer_init = false;
-bool IOBuffer::_large_buffer_init = false;
-
-int  IOBuffer::_small_buffer_size = 4096;
-int  IOBuffer::_large_buffer_size = 4096;
-
-void IOBuffer::small_buffer_pool_init(int block_size, int block_count)
+void IOBuffer::buffer_pool_init(int block_size, int block_count)
 {
-    _small_buffer_allocator.init(block_size, block_count);
-    _small_buffer_init = true;
-    _small_buffer_size = block_size;
-}
-
-void IOBuffer::large_buffer_pool_init(int block_size, int block_count)
-{
-    _large_buffer_allocator.init(block_size, block_count);
-    _large_buffer_init = true;
-    _large_buffer_size = block_size;
-}
-
-Buffer IOBuffer::getSmallBuffer(int size)
-{
-    if (likely(_small_buffer_init && size <= _small_buffer_size))
+    if (_buffer_init == false)
     {
-        char* mem = _small_buffer_allocator.allocate();
+        _buffer_allocator.init(block_size, block_count);
+        _buffer_init = true;
+        _buffer_size = block_size;
+    }
+}
+
+Buffer IOBuffer::getBuffer(int size)
+{
+    if (likely(_buffer_init && size <= _buffer_size))
+    {
+        char* mem = _buffer_allocator.allocate();
         if (likely(mem != 0))
-            return Buffer(mem, _small_buffer_size, _small_buffer_allocator.getDeallocator());
+            return Buffer(mem, _buffer_size, _buffer_allocator.getDeallocator());
         else
-            return size > 0 ? Buffer(size) : Buffer(_small_buffer_size);
+            return size > 0 ? Buffer(size) : Buffer(_buffer_size);
     }
     else
     {
-        return size > 0 ? Buffer(size) : Buffer(_small_buffer_size);
+        return size > 0 ? Buffer(size) : Buffer(_buffer_size);
     }
 }
 
-Buffer IOBuffer::getLargeBuffer(int size)
-{
-    if (likely(_large_buffer_init && size <= _large_buffer_size))
-    {
-        char* mem = _large_buffer_allocator.allocate();
-        if (likely(mem != 0))
-            return Buffer(mem, _large_buffer_size, _large_buffer_allocator.getDeallocator());
-        else
-            return size > 0 ? Buffer(size) : Buffer(_large_buffer_size);
-    }
-    else
-    {
-        return size > 0 ? Buffer(size) : Buffer(_large_buffer_size);
-    }
-}
-
-int IOBuffer::getSmallBufferSize() { return _small_buffer_size; }
-int IOBuffer::getLargeBufferSize() { return _large_buffer_size; }
+int IOBuffer::getBufferSize() { return _buffer_size; }
 
 int IOBuffer::read(int fd, int max)
 {
@@ -271,85 +233,113 @@ int IOBuffer::write(int fd, BufferList::BufferEntry* entry)
 void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
 {
     int send_sz = buffer.getAvailableDataSize();
-    if (_buffer_list.empty())
-    {
-        int real_sz = 0;
-        char* ptr = allocator.allocate(send_sz, real_sz);
-        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+    if (unlikely(send_sz <= 0))
+        return;
 
+    if (send_sz <= BIG_PACKET_THRESHHOLD)
+    {
+        if (_buffer_list.empty())
+        {
+            int real_sz = 0;
+            char* ptr = allocator.allocate(send_sz, real_sz);
+            util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+            BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+            entry->buffer = new_buffer;
+            _buffer_list.push_back(entry);
+        }
+        else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+        {
+            util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+            int cp_sz = pre_buffer.getAvailableSpaceSize();
+            ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
+            pre_buffer.produce_unsafe(cp_sz);
+            buffer.consume_unsafe(cp_sz);
+            send_sz -= cp_sz;
+
+            int real_sz = 0;
+            int expect_sz = pre_buffer.capacity();
+            expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
+            char* ptr = allocator.allocate(expect_sz, real_sz);
+            util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+            BufferList::BufferEntry* entry = _buffer_entry_cache.get();
+            entry->buffer = new_buffer;
+            _buffer_list.push_back(entry);
+        }
+
+        BufferList::BufferEntry* back = _buffer_list.back();
+        ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
+        back->buffer.produce_unsafe(send_sz);
+        buffer.consume_unsafe(send_sz);
+    }
+    else
+    {
         BufferList::BufferEntry* entry = _buffer_entry_cache.get();
-        entry->buffer = new_buffer;
+        entry->buffer = buffer;
         _buffer_list.push_back(entry);
     }
-    else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
-    {
-        util::Buffer& pre_buffer = _buffer_list.back()->buffer;
-        int cp_sz = pre_buffer.getAvailableSpaceSize();
-        ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
-        pre_buffer.produce_unsafe(cp_sz);
-        buffer.consume_unsafe(cp_sz);
-        send_sz -= cp_sz;
-
-        int real_sz = 0;
-        int expect_sz = pre_buffer.capacity();
-        expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
-        char* ptr = allocator.allocate(expect_sz, real_sz);
-        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
-
-        BufferList::BufferEntry* entry = _buffer_entry_cache.get();
-        entry->buffer = new_buffer;
-        _buffer_list.push_back(entry);
-    }
-
-    BufferList::BufferEntry* back = _buffer_list.back();
-    ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
-    back->buffer.produce_unsafe(send_sz);
-    buffer.consume_unsafe(send_sz);
-    return;
 }
 
 void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allocator)
 {
-    util::Buffer& buffer = entry->buffer;
-    int send_sz = buffer.getAvailableDataSize();
-    if (_buffer_list.empty())
+    util::Buffer& data_buffer = entry->buffer;
+    int send_sz = data_buffer.getAvailableDataSize();
+    if (unlikely(send_sz <= 0))
     {
-        int real_sz = 0;
-        char* ptr = allocator.allocate(send_sz, real_sz);
-        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
-
-        BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
-        new_entry->buffer = new_buffer;
-        _buffer_list.push_back(new_entry);
-    }
-    else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
-    {
-        util::Buffer& pre_buffer = _buffer_list.back()->buffer;
-        int cp_sz = pre_buffer.getAvailableSpaceSize();
-        ::memcpy(pre_buffer.producer(), buffer.consumer(), cp_sz);
-        pre_buffer.produce_unsafe(cp_sz);
-        buffer.consume_unsafe(cp_sz);
-        send_sz -= cp_sz;
-
-        int real_sz = 0;
-        int expect_sz = pre_buffer.capacity();
-        expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
-        char* ptr = allocator.allocate(expect_sz, real_sz);
-        util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
-
-        BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
-        new_entry->buffer = new_buffer;
-        _buffer_list.push_back(new_entry);
+        delete entry;
+        return;
     }
 
-    BufferList::BufferEntry* back = _buffer_list.back();
-    ::memcpy(back->buffer.producer(), buffer.consumer(), send_sz);
-    back->buffer.produce_unsafe(send_sz);
-    buffer.consume_unsafe(send_sz);
+    if (send_sz <= BIG_PACKET_THRESHHOLD)
+    {
+        if (_buffer_list.empty())
+        {
+            int real_sz = 0;
+            char* ptr = allocator.allocate(send_sz, real_sz);
+            util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
 
-    delete entry;
+            BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+            new_entry->buffer = new_buffer;
+            _buffer_list.push_back(new_entry);
+        }
+        else if (_buffer_list.back()->buffer.getAvailableSpaceSize() < send_sz)
+        {
+            util::Buffer& pre_buffer = _buffer_list.back()->buffer;
+            int cp_sz = pre_buffer.getAvailableSpaceSize();
+            ::memcpy(pre_buffer.producer(), data_buffer.consumer(), cp_sz);
+            pre_buffer.produce_unsafe(cp_sz);
+            data_buffer.consume_unsafe(cp_sz);
+            send_sz -= cp_sz;
 
-    return;
+            int real_sz = 0;
+            int expect_sz = pre_buffer.capacity();
+            expect_sz = (expect_sz >= 1048576 ? expect_sz : 2*expect_sz);
+            char* ptr = allocator.allocate(expect_sz, real_sz);
+            util::Buffer new_buffer(ptr, real_sz, allocator.getDeallocator());
+
+            BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+            new_entry->buffer = new_buffer;
+            _buffer_list.push_back(new_entry);
+        }
+
+        BufferList::BufferEntry* back = _buffer_list.back();
+        ::memcpy(back->buffer.producer(), data_buffer.consumer(), send_sz);
+        back->buffer.produce_unsafe(send_sz);
+        data_buffer.consume_unsafe(send_sz);
+
+        delete entry;
+        return;
+    }
+    else
+    {
+        BufferList::BufferEntry* new_entry = _buffer_entry_cache.get();
+        new_entry->buffer = data_buffer;
+        _buffer_list.push_back(new_entry);
+
+        delete entry;
+        return;
+    }
 }
 
 int IOBuffer::read(int fd, int max_read, Buffer& buffer)

@@ -6,13 +6,11 @@
 
 namespace knet { namespace net {
 
-NetManager::NetManager(WhenReceivePacket* processor):
     _acceptor(0),
     _net_processor(0),
     _connector(new NetConnector()),
-    _request_processor(processor),
     _idle_timeout(0),
-    _write_buffer_size(65536)
+    _send_buffer_size(65536)
 {
     assert(_connector);
 }
@@ -28,8 +26,8 @@ NetManager::~NetManager()
 
 void NetManager::startNetProcessor()
 {
-    _net_processor = new NetProcessor(_request_processor,
-            _write_buffer_size,
+    _net_processor = new NetProcessor(_data_handler,
+            _send_buffer_size,
             _idle_timeout);
     if (_net_processor == 0)
     {

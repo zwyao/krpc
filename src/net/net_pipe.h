@@ -14,18 +14,33 @@ class NetPipe
             _conn_id(-1),
             _mask(-1),
             _channel_id(-1)
-        {
-        }
+        { }
 
         NetPipe(int processor_id,
                 int conn_id,
-                int mask,
+                int64_t mask,
                 unsigned int channel_id):
             _processor_id(processor_id),
             _conn_id(conn_id),
             _mask(mask),
             _channel_id(channel_id)
         { }
+
+        NetPipe(const NetPipe& other):
+            _processor_id(other._processor_id),
+            _conn_id(other._conn_id),
+            _mask(other._mask),
+            _channel_id(other._channel_id)
+        { }
+
+        NetPipe& operator=(const NetPipe& other)
+        {
+            _processor_id = other._processor_id;
+            _conn_id = other._conn_id;
+            _mask = other._mask;
+            _channel_id = other._channel_id;
+            return *this;
+        }
 
         ~NetPipe() { }
 
@@ -44,6 +59,7 @@ class NetPipe
             return ret >= 0 ? 0 : -1;
         }
 
+        // for test
         int sendForceAsyn(util::Buffer& pack)
         {
             NetProcessor* processor = detail::g_net_processors[_processor_id];
@@ -55,7 +71,7 @@ class NetPipe
     private:
         int _processor_id;
         int _conn_id;
-        int _mask;
+        int64_t _mask;
         unsigned int _channel_id;
 };
 

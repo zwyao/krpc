@@ -58,22 +58,14 @@ class IOBuffer
         BufferList::BufferEntryCache _buffer_entry_cache;
 
     public:
-        static void small_buffer_pool_init(int block_size, int block_count);
-        static void large_buffer_pool_init(int block_size, int block_count);
-        static Buffer getSmallBuffer(int size);
-        static Buffer getLargeBuffer(int size);
-        static int getSmallBufferSize();
-        static int getLargeBufferSize();
+        static void buffer_pool_init(int block_size, int block_count);
+        static Buffer getBuffer(int size);
+        static int getBufferSize();
 
     private:
-        static FixedSizeAllocator _small_buffer_allocator;
-        static FixedSizeAllocator _large_buffer_allocator;
-
-        static bool _small_buffer_init;
-        static int  _small_buffer_size;
-
-        static bool _large_buffer_init;
-        static int  _large_buffer_size;
+        static FixedSizeAllocator _buffer_allocator;
+        static bool _buffer_init;
+        static int  _buffer_size;
 };
 
 }}

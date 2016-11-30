@@ -18,11 +18,15 @@
 #endif
 
 #ifndef NET_MANAGER_NUM
-#define NET_MANAGER_NUM 64
+#define NET_MANAGER_NUM 1024
 #endif
 
 #ifndef MAX_CONNECTION_EACH_MANAGER
 #define MAX_CONNECTION_EACH_MANAGER 100000
+#endif
+
+#ifndef BIG_PACKET_THRESHHOLD
+#define BIG_PACKET_THRESHHOLD 65536
 #endif
 
 #endif

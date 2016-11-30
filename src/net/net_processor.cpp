@@ -1,7 +1,7 @@
 #include "net_processor.h"
 #include "net_manager.h"
-#include "when_receive_packet.h"
 #include "net_event.h"
+#include "raw_data_handler.h"
 #include "global.h"
 
 #include <stdio.h>
@@ -19,12 +19,12 @@ knet::net::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-NetProcessor::NetProcessor(WhenReceivePacket* processor,
+NetProcessor::NetProcessor(RawDataHandler* handler,
         int write_buffer_size,
         int idle_timeout):
     _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
     _idle_timer(0),
-    _processor(processor),
+    _data_handler(handler),
     _conn_id_gen(),
     _notifier(this),
     _idle_queue(),
@@ -41,7 +41,7 @@ NetProcessor::NetProcessor(WhenReceivePacket* processor,
         abort();
     }
 
-    assert(_processor != 0);
+    assert(_data_handler != 0);
     assert(MAX_CONNECTION_EACH_MANAGER > 0);
 
     if (_id >= NET_MANAGER_NUM)
@@ -210,7 +210,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer&
         {
             if (buffer.getAvailableDataSize() >= session._frame_size)
             {
-                knet::util::Buffer pack = knet::util::IOBuffer::getSmallBuffer(session._frame_size);
+                knet::util::Buffer pack = knet::util::IOBuffer::getBuffer(session._frame_size);
 
                 memcpy(pack.producer(), buffer.consumer(), session._frame_size);
 
@@ -221,7 +221,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer&
                         session._conn_id,
                         session._mask,
                         session._channel_id);
-                _processor->process(pipe, pack);
+                _data_handler->handle(pipe, pack);
 
                 session._state = NetProcessor::Session::FRAME_HEAD;
                 return session._frame_size+8;
