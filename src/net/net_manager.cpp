@@ -6,9 +6,11 @@
 
 namespace knet { namespace net {
 
+NetManager::NetManager(RawDataHandler* handler):
     _acceptor(0),
     _net_processor(0),
     _connector(new NetConnector()),
+    _data_handler(handler),
     _idle_timeout(0),
     _send_buffer_size(65536)
 {

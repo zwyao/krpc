@@ -33,6 +33,7 @@ class NetConnector;
 class NetManager
 {
     public:
+        NetManager(RawDataHandler* handler);
         ~NetManager();
 
         /*
