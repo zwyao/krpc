@@ -1,10 +1,16 @@
 #ifndef __IO_READ_BUFFER_H__
 #define __IO_READ_BUFFER_H__
 
-#include "buffer_list.h"
+#include "buffer.h"
 
 namespace knet { namespace util {
 
+/*
+ * 读取数据，存放在Buffer中
+ * buffer大小初始值设置为_io_buffer_size
+ * 每次读操作，都会额外读取65536字节的数据，buffer会按需增长
+ * 参考read函数
+ */
 class IOReadBuffer
 {
     public:

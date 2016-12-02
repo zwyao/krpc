@@ -25,6 +25,7 @@
 #define MAX_CONNECTION_EACH_MANAGER 100000
 #endif
 
+// if > BIG_PACKET_THRESHHOLD, then it is a big packet
 #ifndef BIG_PACKET_THRESHHOLD
 #define BIG_PACKET_THRESHHOLD 65536
 #endif
