@@ -1,4 +1,5 @@
 #include "net_manager.h"
+#include "net_config.h"
 #include "raw_data_handler.h"
 #include "global.h"
 
@@ -34,9 +35,10 @@ int main(int argc, char** argv)
     knet::global::buffer_pool_init(128, 102400);
 
     Demo demo(atoi(argv[1]));
-    NetManager net_manager(&demo);
-    net_manager.setIdleTimeout(1);
-    //net_manager.setSendBufferSize(131072);
+    NetConfig config;
+    config.g_conn_idle_timeout = 1;
+
+    NetManager net_manager(&config, &demo);
     net_manager.startAcceptor(9000);
     net_manager.run();
 }

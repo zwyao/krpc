@@ -19,6 +19,7 @@ namespace knet { namespace net {
 
 class RawDataHandler;
 class NetManager;
+class NetConfig;
 // 网络请求处理的入口
 class NetProcessor : public CallbackObj
 {
@@ -113,9 +114,7 @@ class NetProcessor : public CallbackObj
         typedef util::SpinLocker PendingConnectingLocker;
 
     public:
-        NetProcessor(RawDataHandler* processor,
-                int write_buffer_size,
-                int idle_timeout);
+        NetProcessor(NetConfig* config, RawDataHandler* handler);
         virtual ~NetProcessor();
 
         void run();
@@ -346,6 +345,7 @@ class NetProcessor : public CallbackObj
         evnet::EvLoop* const _reactor;
         evnet::EvTimer* _idle_timer;
         RawDataHandler* const _data_handler;
+        NetConfig* const _config;
         ConnIdGenerator _conn_id_gen; //addStaticConnection在启动时候回调用，应该在最前面初始化
         Notifier _notifier;
         TimeWheel _idle_queue;

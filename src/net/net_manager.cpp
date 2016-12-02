@@ -6,15 +6,16 @@
 
 namespace knet { namespace net {
 
-NetManager::NetManager(RawDataHandler* handler):
+NetManager::NetManager(NetConfig* config, RawDataHandler* handler):
     _acceptor(0),
     _net_processor(0),
     _connector(new NetConnector()),
     _data_handler(handler),
-    _idle_timeout(0),
-    _send_buffer_size(65536)
+    _config(config)
 {
-    assert(_connector);
+    assert(_connector != 0);
+    assert(_data_handler != 0);
+    assert(_config != 0);
 }
 
 NetManager::~NetManager()
@@ -28,9 +29,7 @@ NetManager::~NetManager()
 
 void NetManager::startNetProcessor()
 {
-    _net_processor = new NetProcessor(_data_handler,
-            _send_buffer_size,
-            _idle_timeout);
+    _net_processor = new NetProcessor(_config, _data_handler);
     if (_net_processor == 0)
     {
         fprintf(stderr, "NetProcessor start error\n");

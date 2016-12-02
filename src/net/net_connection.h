@@ -4,7 +4,8 @@
 #include "net_event.h"
 #include "tcp_socket.h"
 #include "callback_object.h"
-#include "io_buffer.h"
+#include "io_read_buffer.h"
+#include "io_write_buffer.h"
 #include "write_buffer_allocator.h"
 #include "list.h"
 #include "ev.h"
@@ -214,10 +215,8 @@ class NetConnection
         NetConnection::State _state;
         NetConnection::Error _error;
 
-        // read buffer,初始大小global::g_read_io_buffer_init,按需增长
-        util::IOBuffer _in_buffer;
-        // write buffer
-        util::IOBuffer _out_buffer;
+        util::IOReadBuffer _in_buffer;
+        util::IOWriteBuffer _out_buffer;
 
     public:
         util::ListOp::ListNode list_node;

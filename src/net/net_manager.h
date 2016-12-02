@@ -30,10 +30,11 @@ class RawDataHandler;
 class NetProcessor;
 class Acceptor;
 class NetConnector;
+class NetConfig;
 class NetManager
 {
     public:
-        NetManager(RawDataHandler* handler);
+        NetManager(NetConfig* config, RawDataHandler* handler);
         ~NetManager();
 
         /*
@@ -48,23 +49,14 @@ class NetManager
 
         void run();
 
-        // 在startNetProcessor()之前调用下面的set函数
-        void setIdleTimeout(int timeout) { _idle_timeout = timeout; }
-        void setSendBufferSize(int size) { _send_buffer_size = size; }
-
         //NetPipe getPipe(const ServerLocation& location);
-
-        inline int getIdleTimeout() const { return _idle_timeout; }
 
     private:
         Acceptor* _acceptor;
         NetProcessor* _net_processor;
         NetConnector* _connector;
         RawDataHandler* const _data_handler;
-        // 空闲链接的timeout，不是收发数据的timeout
-        // 秒级
-        int _idle_timeout;
-        int _send_buffer_size;
+        NetConfig* const _config;
 };
 
 }}

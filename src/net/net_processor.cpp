@@ -1,6 +1,7 @@
 #include "net_processor.h"
 #include "net_manager.h"
 #include "net_event.h"
+#include "net_config.h"
 #include "raw_data_handler.h"
 #include "global.h"
 
@@ -19,17 +20,16 @@ knet::net::NetProcessor* g_net_processors[NET_MANAGER_NUM] = {0};
 
 }
 
-NetProcessor::NetProcessor(RawDataHandler* handler,
-        int write_buffer_size,
-        int idle_timeout):
+NetProcessor::NetProcessor(NetConfig* config, RawDataHandler* handler):
     _reactor(evnet::ev_init(evnet::EV_REACTOR_EPOLL)),
     _idle_timer(0),
     _data_handler(handler),
+    _config(config),
     _conn_id_gen(),
     _notifier(this),
     _idle_queue(),
     _mask_generator(),
-    _write_buffer_allocator(write_buffer_size),
+    _write_buffer_allocator(_config->g_io_write_buffer_init),
     _thread_id(knet::util::CurrentThread::getTid()),
     _id(detail::g_processor_id_creator.nextID()),
     _frame_limit(64*1024*1024),
@@ -54,7 +54,7 @@ NetProcessor::NetProcessor(RawDataHandler* handler,
     init_conn_list();
     init_session();
 
-    setup_timer(idle_timeout);
+    setup_timer(_config->g_conn_idle_timeout);
     evnet::ev_set_loopend(_reactor, do_pending, this);
 
     SET_HANDLE(this, &NetProcessor::process);
@@ -210,7 +210,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer&
         {
             if (buffer.getAvailableDataSize() >= session._frame_size)
             {
-                knet::util::Buffer pack = knet::util::IOBuffer::getBuffer(session._frame_size);
+                knet::util::Buffer pack = knet::global::getBuffer(session._frame_size);
 
                 memcpy(pack.producer(), buffer.consumer(), session._frame_size);
 

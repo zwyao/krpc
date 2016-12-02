@@ -1,15 +1,13 @@
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __KNET_GLOBAL_H__
+#define __KNET_GLOBAL_H__
 
 #include "buffer.h"
 
 namespace knet { namespace global {
 
-extern int g_read_io_buffer_init;
-
-void buffer_pool_init(int block_count, int block_size);
-
+void buffer_pool_init(int block_size, int block_count);
 knet::util::Buffer getBuffer(int size);
+int getBufferSize();
 
 }}
 

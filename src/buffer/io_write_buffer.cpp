@@ -1,4 +1,4 @@
-#include "io_buffer.h"
+#include "io_write_buffer.h"
 #include "global.h"
 
 #include <unistd.h>
@@ -6,114 +6,9 @@
 #include <sys/uio.h>
 #include <limits.h>
 
-namespace knet { namespace global {
-
-int g_read_io_buffer_init = 1048576;
-
-void buffer_pool_init(int block_size, int block_count)
-{
-    util::IOBuffer::buffer_pool_init(block_size, block_count);
-}
-
-util::Buffer getBuffer(int size)
-{
-    util::Buffer buffer = util::IOBuffer::getBuffer(size+8);
-    buffer.produce_unsafe(8);
-    buffer.consume_unsafe(8);
-    return buffer;
-}
-
-}}
-
-namespace 
-{
-
-inline int read_data(int fd, int max_read, knet::util::Buffer& buffer)
-{
-    char extrabuf[65536];
-    struct iovec read_vec[2];
-    read_vec[0].iov_base = buffer.producer();
-    read_vec[0].iov_len = max_read;
-    read_vec[1].iov_base = extrabuf;
-    read_vec[1].iov_len = sizeof(extrabuf);
-
-    const int iovcnt = (max_read < (int)sizeof(extrabuf)) ? 2 : 1;
-    const int nread = ::readv(fd, read_vec, iovcnt);
-    if (nread < 0)
-    {
-        return (errno > 0 ? -errno : errno);
-    }
-    else if (nread <= max_read)
-    {
-        buffer.produce_unsafe(nread);
-    }
-    else
-    {
-        fprintf(stderr, "+++++++++++++++++++++++++++++++++++++++++++++++%d: %d\n", max_read, nread);
-        int total_size = buffer.capacity() + nread;
-        int mcp_size1 = buffer.getAvailableDataSize() + max_read;
-
-        knet::util::Buffer new_buffer(total_size);
-
-        memcpy(new_buffer.getBuffer(), buffer.consumer(), mcp_size1);
-        memcpy(new_buffer.getBuffer()+mcp_size1, extrabuf, nread-max_read);
-        new_buffer.produce_unsafe(mcp_size1+nread-max_read);
-
-        buffer = new_buffer;
-    }
-
-    return nread;
-}
-
-}
-
 namespace knet { namespace util {
 
-FixedSizeAllocator IOBuffer::_buffer_allocator;
-bool IOBuffer::_buffer_init = false;
-int  IOBuffer::_buffer_size = 4096;
-
-void IOBuffer::buffer_pool_init(int block_size, int block_count)
-{
-    if (_buffer_init == false)
-    {
-        _buffer_allocator.init(block_size, block_count);
-        _buffer_init = true;
-        _buffer_size = block_size;
-    }
-}
-
-Buffer IOBuffer::getBuffer(int size)
-{
-    if (likely(_buffer_init && size <= _buffer_size))
-    {
-        char* mem = _buffer_allocator.allocate();
-        if (likely(mem != 0))
-            return Buffer(mem, _buffer_size, _buffer_allocator.getDeallocator());
-        else
-            return size > 0 ? Buffer(size) : Buffer(_buffer_size);
-    }
-    else
-    {
-        return size > 0 ? Buffer(size) : Buffer(_buffer_size);
-    }
-}
-
-int IOBuffer::getBufferSize() { return _buffer_size; }
-
-int IOBuffer::read(int fd, int max)
-{
-    if (unlikely(_buffer_list.empty() == true))
-    {
-        util::Buffer buffer(global::g_read_io_buffer_init);
-        _buffer_list.push_back(new BufferList::BufferEntry(buffer, 0, 0));
-    }
-    assert(_buffer_list.size() == 1);
-    max = _buffer_list.front()->buffer.getAvailableSpaceSize();
-    return read_data(fd, max, _buffer_list.front()->buffer);
-}
-
-int IOBuffer::write(int fd, bool& null_loop)
+int IOWriteBuffer::write(int fd, bool& null_loop)
 {
     const int size = _buffer_list.size();
     if (unlikely(size == 0))
@@ -193,7 +88,7 @@ int IOBuffer::write(int fd, bool& null_loop)
  * 首先尝试立刻发送
  * 这个方案，影响吞吐量
  */
-int IOBuffer::write(int fd, BufferList::BufferEntry* entry)
+int IOWriteBuffer::write(int fd, BufferList::BufferEntry* entry)
 {
     const int nbytes = entry->buffer.getAvailableDataSize();
     const int size = _buffer_list.size();
@@ -229,8 +124,7 @@ int IOBuffer::write(int fd, BufferList::BufferEntry* entry)
     }
 }
 
-
-void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
+void IOWriteBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
 {
     int send_sz = buffer.getAvailableDataSize();
     if (unlikely(send_sz <= 0))
@@ -281,7 +175,7 @@ void IOBuffer::append(util::Buffer& buffer, WriteBufferAllocator& allocator)
     }
 }
 
-void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allocator)
+void IOWriteBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allocator)
 {
     util::Buffer& data_buffer = entry->buffer;
     int send_sz = data_buffer.getAvailableDataSize();
@@ -340,15 +234,6 @@ void IOBuffer::append(BufferList::BufferEntry* entry, WriteBufferAllocator& allo
         delete entry;
         return;
     }
-}
-
-int IOBuffer::read(int fd, int max_read, Buffer& buffer)
-{
-    char* ptr = buffer.producer();
-    int nread = ::read(fd, ptr, max_read);
-    if (nread > 0)
-        buffer.produce_unsafe(nread);
-    return nread >= 0 ? nread : (errno > 0 ? -errno : errno);
 }
 
 }}
