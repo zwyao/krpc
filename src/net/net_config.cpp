@@ -1,6 +1,3 @@
-#ifndef __NET_CONFIG_H__
-#define __NET_CONFIG_H__
-
 #include "net_config.h"
 
 namespace knet { namespace net {
@@ -12,6 +9,4 @@ NetConfig::NetConfig():
 }
 
 }}
-
-#endif
 

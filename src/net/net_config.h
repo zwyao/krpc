@@ -1,5 +1,5 @@
-#ifndef _NET_CONFIG_H__
-#define _NET_CONFIG_H__
+#ifndef __NET_CONFIG_H__
+#define __NET_CONFIG_H__
 
 namespace knet { namespace net {
 
