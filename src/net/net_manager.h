@@ -1,6 +1,8 @@
 #ifndef __NET_MANAGER_H__
 #define __NET_MANAGER_H__
 
+#include "net_pipe.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +51,7 @@ class NetManager
 
         void run();
 
-        //NetPipe getPipe(const ServerLocation& location);
+        NetPipe getPipe(const ServerLocation& location);
 
     private:
         Acceptor* _acceptor;

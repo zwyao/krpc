@@ -42,7 +42,7 @@ class NetProcessor : public CallbackObj
                     _conn_id(-1),
                     _mask(-1),
                     _frame_size(0),
-                    _channel_id(-1)
+                    _req_id(-1)
                 {
                 }
 
@@ -59,7 +59,7 @@ class NetProcessor : public CallbackObj
                 int _conn_id;  // 约定值,范围[0, MAX_CONNECTION_EACH_MANAGER-1]
                 int64_t _mask;
                 int _frame_size;
-                unsigned int _channel_id;
+                unsigned int _req_id;
         };
 
         class TimeWheel
@@ -122,14 +122,14 @@ class NetProcessor : public CallbackObj
         int process(int code, void* data);
 
         // 主动发起链接
-        inline int newConnection(TcpSocket* sock)
+        inline NetConnection* newConnection(TcpSocket* sock)
         {
             NetConnection* const conn =
                 new (std::nothrow) NetConnection(sock, this, NetConnection::CONNECTING);
             if (conn == 0)
             {
                 delete sock;
-                return -1;
+                return 0;
             }
 
             const int id = _conn_id_gen.get();
@@ -143,13 +143,14 @@ class NetProcessor : public CallbackObj
                     _pending_conn_list.push_back(conn);
                 }
                 //evnet::ev_wakeup(_reactor);
+                _notifier.notify();
 
-                return 0;
+                return conn;
             }
             else
             {
                 delete conn;
-                return -1;
+                return 0;
             }
         }
 
@@ -219,18 +220,18 @@ class NetProcessor : public CallbackObj
             }
         }
 
-        inline int send(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
+        inline int send(int conn_id, int64_t mask, unsigned int req_id, util::Buffer& buffer)
         {
             if (_thread_id == util::CurrentThread::getTid())
-                return send_by_me(conn_id, mask, channel_id, buffer);
+                return send_by_me(conn_id, mask, req_id, buffer);
             else
-                return send_by_queue(conn_id, mask, channel_id, buffer);
+                return send_by_queue(conn_id, mask, req_id, buffer);
         }
 
         // for test
-        inline int sendAsyn(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
+        inline int sendAsyn(int conn_id, int64_t mask, unsigned int req_id, util::Buffer& buffer)
         {
-            return send_by_queue(conn_id, mask, channel_id, buffer);
+            return send_by_queue(conn_id, mask, req_id, buffer);
         }
 
         inline int myID() const { return _id; }
@@ -287,7 +288,7 @@ class NetProcessor : public CallbackObj
         }
 
         // safe in loop
-        inline int send_by_me(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_me(int conn_id, int64_t mask, unsigned int req_id, util::Buffer& buffer)
         {
             NetConnection* conn = _conn_id_map.get(conn_id);
             if (unlikely(conn == 0 || conn->myMask() != mask)) return -1;
@@ -296,7 +297,7 @@ class NetProcessor : public CallbackObj
             assert(buffer.consumer() - ptr == 8);
 
             *((unsigned int*)ptr) = htonl(buffer.getAvailableDataSize());
-            *((unsigned int*)(ptr+4)) = htonl(channel_id);
+            *((unsigned int*)(ptr+4)) = htonl(req_id);
             buffer.consume_unsafe(-8);
 
             // 至此，buffer被夺走
@@ -304,13 +305,13 @@ class NetProcessor : public CallbackObj
         }
 
         // safe with lock
-        inline int send_by_queue(int conn_id, int64_t mask, int channel_id, util::Buffer& buffer)
+        inline int send_by_queue(int conn_id, int64_t mask, unsigned int req_id, util::Buffer& buffer)
         {
             char* ptr = buffer.getBuffer();
             assert(buffer.consumer() - ptr == 8);
 
             *((unsigned int*)ptr) = htonl(buffer.getAvailableDataSize());
-            *((unsigned int*)(ptr+4)) = htonl(channel_id);
+            *((unsigned int*)(ptr+4)) = htonl(req_id);
             buffer.consume_unsafe(-8);
 
             // 至此，buffer被夺走

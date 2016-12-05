@@ -187,17 +187,17 @@ int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer&
 
             char* frame = buffer.consumer();
             session._frame_size = ntohl(*((unsigned int*)frame));
-            session._channel_id = ntohl(*((unsigned int*)(frame+4)));
+            session._req_id = ntohl(*((unsigned int*)(frame+4)));
             // 跳过8字节
             buffer.consume_unsafe(8);
 
             // 包含负值的检查
             if (unlikely((unsigned int)session._frame_size > (unsigned int)_frame_limit))
             {
-                fprintf(stderr, "frame size: %d too large(limit %d), channel id: %u<%d>\n",
+                fprintf(stderr, "frame size: %d too large(limit %d), request id: %u<%d>\n",
                         session._frame_size,
                         _frame_limit,
-                        session._channel_id,
+                        session._req_id,
                         buffer.getAvailableDataSize());
 
                 session._state = NetProcessor::Session::INVALID;
@@ -220,7 +220,7 @@ int NetProcessor::check_data(NetProcessor::Session& session, knet::util::Buffer&
                 NetPipe pipe(_id,
                         session._conn_id,
                         session._mask,
-                        session._channel_id);
+                        session._req_id);
                 _data_handler->handle(pipe, pack);
 
                 session._state = NetProcessor::Session::FRAME_HEAD;
